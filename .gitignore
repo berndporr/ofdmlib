@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+# Distribution / packaging
+build/
+html/
+latex/
+.vscode/

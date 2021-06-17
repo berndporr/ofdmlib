@@ -1,0 +1,15 @@
+title ofdmlib
+
+Input Data->Energy Dispersal: Prepare the data for processing
+
+Energy Dispersal->Quadrature Modulator: Pseudo Randomise data 
+
+Pilot Tones->Inverse Fourier Transform: Inject Pilot Tone at specified Positions
+
+Quadrature Modulator->Inverse Fourier Transform: QAM Encoded Data
+
+Inverse Fourier Transform->Band-Pass Modulator: Time Domain Samples
+
+Band-Pass Modulator->Cyclic Prefix: Upsampling
+
+Cyclic Prefix->Tx: Cyclic prefix added, data encoded, ready for transmission.
