@@ -1,9 +1,8 @@
 # ofdmlib
-Real-time C++ Implementation of OFDM
+Efficient, object-oriented OFDM library designed and implemented to work in real-time.
 
-<h2 align="center">ofdmlib</h2>  
   <p align="center">
-     Efficient, object-oriented OFDM library designed and implemented to work in real-time.
+     
 
 </div>
 
@@ -81,7 +80,7 @@ chmod +x devsetup.sh
 ./devsetup.sh
 ```
 
-### Build/Installation
+### Installation
 
 1.Build & Test:
 ```sh
