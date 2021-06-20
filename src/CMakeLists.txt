@@ -31,6 +31,9 @@ set(INCLUDE_DIRS
 set(SOURCE_FILE    
    ${CMAKE_CURRENT_SOURCE_DIR}/coder/fft/ofdmfft.h
    ${CMAKE_CURRENT_SOURCE_DIR}/coder/fft/ofdmfft.cpp 
+
+   ${CMAKE_CURRENT_SOURCE_DIR}/coder/ofdmcodec.h
+   ${CMAKE_CURRENT_SOURCE_DIR}/coder/ofdmcodec.cpp 
 )
 
 # Create library

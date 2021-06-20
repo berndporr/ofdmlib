@@ -16,13 +16,15 @@
 // For object under test
 #include "ofdmcodec.h"
 
+#define FFT_DIFFERENCE_THRESHOLD 0.0000000000001
 
 // Integration Tests 
 BOOST_AUTO_TEST_SUITE(IntegrationTests)
 
 /**
 *  This test simulates entire encoding and decoding process.
-*
+*  Only one symbol, this test does not transmit the data 
+*  through a physical medium.
 * 
 */
 BOOST_AUTO_TEST_CASE(EncodeDecode)
@@ -33,13 +35,75 @@ BOOST_AUTO_TEST_CASE(EncodeDecode)
     uint16_t nPoints = 512;
     bool complexTimeSeries = false;
     uint16_t pilotToneStep = 16;
+    float pilotToneAmplitude = 2.0;
     uint16_t qamSize = 4;
 
     // Initialize ofdm coder objects
-    OFDMCodec encoder(-1, nPoints, complexTimeSeries, pilotToneStep, qamSize);
-    OFDMCodec decoder(1, nPoints, complexTimeSeries, pilotToneStep, qamSize);
+    OFDMCodec encoder(FFTW_FORWARD, nPoints, complexTimeSeries, pilotToneStep, pilotToneAmplitude, qamSize);
+    OFDMCodec decoder(FFTW_BACKWARD, nPoints, complexTimeSeries, pilotToneStep, pilotToneAmplitude, qamSize);
 
-    //BOOST_CHECK_MESSAGE( sample != 0, "samples do not match:  " << sample 1 << " " << "  Initial Value Hasn't Changed" );
+    // Setup random float generator
+    srand( (unsigned)time( NULL ) );
+
+    // Generate Array of random floats
+    float RandomInputArray[nPoints*2];
+    for (uint16_t i = 0; i < nPoints*2; i++)
+    {
+        RandomInputArray[i] = (float) rand()/RAND_MAX;
+    }
+
+    // Encode
+    auto start = std::chrono::steady_clock::now();
+    encoder.Encode(RandomInputArray);
+    auto end = std::chrono::steady_clock::now();
+
+    std::cout << "Encode Elapsed time in nanoseconds: "
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+        << " ns" << std::endl;
+
+    // Copy the encoded output
+    for (uint16_t i = 0; i < nPoints; i++)
+    {
+        decoder.m_fft.in[i][0] = encoder.m_fft.out[i][0];
+        decoder.m_fft.in[i][1] = encoder.m_fft.out[i][1];
+    }
+
+    // Decode
+    start = std::chrono::steady_clock::now();
+    decoder.Decode();
+    end = std::chrono::steady_clock::now();
+
+    std::cout << "Decode Elapsed time in nanoseconds: "
+    << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+    << " ns" << std::endl;
+
+
+    // Normalize 
+    start = std::chrono::steady_clock::now();
+    for (uint16_t i = 0; i < nPoints; i++)
+    {
+        decoder.m_fft.out[i][0] *= 1./nPoints;
+        decoder.m_fft.out[i][1] *= 1./nPoints;
+    }
+    end = std::chrono::steady_clock::now();
+
+    std::cout << "Normalize Elapsed time in nanoseconds: "
+    << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+    << " ns" << std::endl;
+
+
+    // Print input and output buffers
+    for (uint16_t i = 0; i < nPoints; i++)
+    {
+        printf("Recovered Sample(time domain) Amplitude: %3d %+9.5f j%+9.5f Input to fft vs. %+9.5f j%+9.5f Output of IFFT\n",
+        i, encoder.m_fft.in[i][0], encoder.m_fft.in[i][1], decoder.m_fft.out[i][0], decoder.m_fft.out[i][1]);
+
+        // Check if real and complex element match within defined precision of each other
+        BOOST_CHECK_MESSAGE(
+         ( (std::abs( encoder.m_fft.in[i][0] - decoder.m_fft.out[i][0] ) <= FFT_DIFFERENCE_THRESHOLD ) ||
+         (  std::abs( encoder.m_fft.in[i][1] - decoder.m_fft.out[i][1] ) <= FFT_DIFFERENCE_THRESHOLD )), 
+         "Values vary more than threshold!" );   
+    }
 
 }
 BOOST_AUTO_TEST_SUITE_END()

@@ -20,11 +20,20 @@
 * @return
 *
 */
-int ofdmFFT::Setup(uint16_t nPoints, int type)
-{
+int ofdmFFT::Configure(uint16_t nPoints, int type)
+{   
+    // If object has been configured before
+    if(configured)
+    { 
+    // Destroy fft plan and free allocated memory to buffers
+    Close();
+    }
     in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * nPoints);
     out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * nPoints);
-    p = fftw_plan_dft_1d(nPoints, in, out, type, FFTW_ESTIMATE);
+    fftplan = fftw_plan_dft_1d(nPoints, in, out, type, FFTW_ESTIMATE);
+
+    // Set configure flag
+    configured = 1;
     return 0;
 }
 
@@ -37,9 +46,9 @@ int ofdmFFT::Setup(uint16_t nPoints, int type)
 */    
 int ofdmFFT::Close()
 {
-    fftw_destroy_plan(p);
+    fftw_destroy_plan(fftplan);
     fftw_free(in); fftw_free(out);
-    settingsSet = 0;
+    configured = 0;
     return 0;
 }
 
@@ -51,9 +60,8 @@ int ofdmFFT::Close()
 * @return 0 on sucess, else error number
 *
 */    
-int ofdmFFT::Execute()
+int ofdmFFT::ComputeTransform()
 {
-
-    fftw_execute(p); 
+    fftw_execute(fftplan); 
     return 0;
 }

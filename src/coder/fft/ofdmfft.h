@@ -47,8 +47,7 @@ public:
 	*/
 	ofdmFFT(size_t nPoints, int type)
 	{
-		Setup(nPoints, type);
-		settingsSet = 1;
+		Configure(nPoints, type);
 	}
 
 	/**
@@ -60,12 +59,11 @@ public:
 	~ofdmFFT()
 	{
 		Close();
-		settingsSet = 0;
 	}
 
-	int Setup(uint16_t nPoints, int type);
+	int Configure(uint16_t nPoints, int type);
 	int Close();
-	int Execute();
+	int ComputeTransform();
 
 public:
 
@@ -74,8 +72,8 @@ public:
 
 private:
 
-	int settingsSet = 0;
-    fftw_plan p; /// FFT plan 
+	int configured = 0;
+    fftw_plan fftplan; /// FFT plan 
 
 };
 

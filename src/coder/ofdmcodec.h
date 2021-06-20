@@ -20,46 +20,18 @@
 #include "ofdmfft.h"
 
 
-/*
-	// Total number of FFT & IFFT coefficients 
-    uint16_t m_nPoints;
-
-    // Complexity
-    bool m_complexTimeSeries = false;
-
-    // Upsampled size of the symbol without the cyclic prefix
-    uint16_t m_symbolSize;
-    uint16_t m_totalSymbolSize; // After upsampling
-
-    // Carriers
-    uint16_t m_nDataCarriers;
-
-    // Pilot Tones
-	uint16_t m_pilotToneStep;
-    //uint16_t pilotTonesIndicies[] = { 10, 20, 30 };
-    //uint16_t nPilotTones = sizeof(pilotTonesPositions) / sizeof(pilotTonesPositions[0]);
-
-    // The time between the current and consecutive ofdm symbol
-    uint16_t m_guardInterval;
-
-    // QAM Modulator 
-    uint16_t m_QAMSize;
-
-    // Cyclic-Prefix
-    uint32_t m_cyclicPrefixSize;
-*/
-
-
 struct OFDMSettings
 {
+    int type;
 	bool complexTimeSeries = false; // Complexity
+    uint16_t EnergyDispersalSeed;
     uint16_t nPoints; // Total number of FFT & IFFT coefficients 
 	uint16_t pilotToneStep; // Pilot Tones
+    uint16_t pilotToneAmplitude; // Pilot Tones
     uint16_t guardInterval; // The time between the current and consecutive ofdm symbol
     uint16_t QAMSize; // QAM Modulator 
     uint32_t cyclicPrefixSize; // Cyclic-Prefix
-} ;
-
+};
 
 
 /**
@@ -86,35 +58,46 @@ class OFDMCodec {
 
 public: 
 
-	OFDMCodec(int type, uint16_t nPoints, bool complexTimeSeries, uint16_t pilotToneStep, uint16_t qamSize)
+	OFDMCodec(int type, uint16_t nPoints, bool complexTimeSeries, uint16_t pilotToneStep, float pilotToneAmplitude, uint16_t qamSize)
     {
-    	m_Settings.nPoints             = nPoints;
+    	m_Settings.EnergyDispersalSeed = 0;
+        m_Settings.nPoints             = nPoints;
         m_Settings.complexTimeSeries   = complexTimeSeries;
         m_Settings.pilotToneStep       = pilotToneStep;
+        m_Settings.pilotToneAmplitude  = pilotToneAmplitude;
         m_Settings.QAMSize             = qamSize;
-        m_fft.Setup(nPoints, type);
-        //nPilotTones         = ; // This needs to be an array
-        //pilotTonesPositions = 0;
-        //m_guardInterval       = guardInterval;
+        m_Settings.type                = type;
+        m_fft.Configure(nPoints, type);
 	}
 
-    // Get & Set Functions for the settings variables
+    // Encoding Related Functions
+    int Encode(float *data);
 
-    uint16_t SetFFTDirection(int direction);
-    uint16_t GetFFTDirection();
+    int QAMModulatorPlaceholder(float *data);
+
+    // Decode
+    int Decode();
+
+    // Get & Set Functions for the settings variables
+    uint16_t SetEnergyDispersalSeed(uint16_t seed);
+    uint16_t GetEnergyDispersalSeed();
+    
+    uint16_t SetCodecType(int type);
+    int GetCodecType();
 
     uint16_t SetnPoints(uint16_t newNPoints);
     uint16_t GetnPoints();
 
     uint16_t SetTimeComplexity(bool newComplexity);
-    uint16_t GetTimeComplexity();
+    bool GetTimeComplexity();
 
     uint16_t GetPilotTonesIndicies(); // This should probably return an array of the pilotTones
+    uint16_t GetPilotToneStep();
     uint16_t SetPilotTones(uint16_t newPilotToneStep);
     uint16_t SetPilotTones(uint16_t newPilotToneSequence[], uint16_t nPilots); // nPilots might not be needed.
 
-    uint16_t GetGuardInterval();
-    uint16_t SetGuardInterval(uint16_t newGuardInterval);
+    uint16_t GetPilotTonesAmplitude();
+    uint16_t SetPilotTonesAmplitude(float newPilotToneStep);
 
     uint16_t GetQAMSize();
     uint16_t SetQAMSize(uint16_t newQAMSize);
@@ -122,12 +105,11 @@ public:
     uint16_t GetCyclicPrefixSize();
     uint16_t SetCyclicPrefixSize(uint16_t newCyclicPrefixSize);
 
+    // Objects
+	ofdmFFT m_fft; // TODO: In future releases this can possibly made private
+
 private:
     // Settings
-
-    // Objects
-	ofdmFFT m_fft;
-
     OFDMSettings m_Settings;
 
 };
