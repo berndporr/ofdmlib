@@ -16,27 +16,19 @@
 #include <iostream>
 #include "ofdmcodec.h"
 
-/**
- * @brief OFDM coder object class
- * This object encapsulates the encoding 
- * and decoding functionlaity. Esentially it
- * is a wrapper of all OFDM related objects with
- * configurable settings.
- * 
- */
 
-
-// Encoding Related Functions
+// Encoding Related Functions //
 
 
 /**
 * Encodes one OFDM Symbol
 * 
-* @param data pointer to float array
+* @param data pointer to input float data array
 *
 * @return 0 On Success, else error number.
 *
 * @todo: Modify this so all data types can be handled not just the float.
+*        Update for each new feature.
 */
 int OFDMCodec::Encode(float *data)
 {
@@ -50,7 +42,7 @@ int OFDMCodec::Encode(float *data)
 * A place holder function for QAM Modulator 
 * It just copies over the data from one aray into fft object input
 * 
-* @param
+* @param data pointer to float data array
 *
 * @return 0 On Success, else error number.
 *
@@ -68,16 +60,15 @@ int OFDMCodec::QAMModulatorPlaceholder(float *data)
 }
 
 
-// Decoding Related Functions
+// Decoding Related Functions //
+
 
 /**
 * Decodes One OFDM Symbol
-* 
-* @param
 *
 * @return 0 On Success, else error number.
 *
-* @todo: This needs to be implemented for release v0.5
+* @todo: Update for each new feature.
 */
 int OFDMCodec::Decode()
 {
@@ -87,6 +78,7 @@ int OFDMCodec::Decode()
 
 
 // Settings Functions //
+
 
 /**
 * Update energy dispersal seed
@@ -151,7 +143,7 @@ int OFDMCodec::GetCodecType()
 *
 * @return 0 On Success, else error number.
 *
-* @todo: Reconfiguration in later releases
+* @todo: Reconfiguration of appropriate objects in later releases
 */
 uint16_t OFDMCodec::SetnPoints(uint16_t newNPoints)
 {
@@ -163,11 +155,9 @@ uint16_t OFDMCodec::SetnPoints(uint16_t newNPoints)
 
 /**
 * Get the FFT points number
-* 
 *
 * @return Currently configured number(uint16_t) of points for fft
 *
-* @todo: Reconfiguration in later releases
 */
 uint16_t OFDMCodec::GetnPoints()
 {
@@ -176,13 +166,13 @@ uint16_t OFDMCodec::GetnPoints()
 
 
 /**
-* Sets the Time complexity for the FFT 
+* Sets the time complexity for the FFT 
 * 
-* @param newComplexity (bool)
+* @param newComplexity time complexity(bool)
 *
 * @return 0 On Success, else error number.
 *
-* @todo: Reconfiguration in later releases
+* @todo: Reconfiguration of appropriate objects in later releases
 */
 uint16_t OFDMCodec::SetTimeComplexity(bool newComplexity)
 {
@@ -191,9 +181,7 @@ uint16_t OFDMCodec::SetTimeComplexity(bool newComplexity)
 
 
 /**
-* DESC
-* 
-* @param
+* Get the time complexity for the FFT 
 *
 * @return 0 On Success, else error number.
 *
@@ -207,8 +195,6 @@ bool OFDMCodec::GetTimeComplexity()
 
 /**
 * Get Current pilot tone step
-* 
-* @param
 *
 * @return Currently configured pilot tone step (uint16_t).
 *
@@ -220,17 +206,15 @@ uint16_t OFDMCodec::GetPilotToneStep()
 }
 
 /**
-* DESC
-* 
-* @param
+* Obtains current pilot tone indicies vector.
 *
-* @return 0 On Success, else error number.
+* @return -
 *
-* @todo:
+* @todo: Return pointer to the pilot tone vector
 */
 uint16_t OFDMCodec::GetPilotTonesIndicies() // This should probably return an array of the pilotTones
 {
-
+    return OK;
 }
 
 
@@ -241,7 +225,7 @@ uint16_t OFDMCodec::GetPilotTonesIndicies() // This should probably return an ar
 *
 * @return 0 On Success, else error number.
 *
-* @todo:
+* @todo: Reconfiguration of appropriate objects in later releases
 */
 uint16_t OFDMCodec::SetPilotTones(uint16_t newPilotToneStep)
 {
@@ -250,17 +234,19 @@ uint16_t OFDMCodec::SetPilotTones(uint16_t newPilotToneStep)
 
 
 /**
-* DESC
+* Sets the pilot tones, from a pilot tone position vector
 * 
-* @param
+* @param newPilotToneVector new pilot tone positions
+*
+* @param nPilots number(uint16_t) of pilot tones in the vector 
 *
 * @return 0 On Success, else error number.
 *
-* @todo:
+* @todo: Reconfiguration of appropriate objects in later releases
 */
-uint16_t OFDMCodec::SetPilotTones(uint16_t newPilotToneSequence[], uint16_t nPilots) // nPilots might not be needed.
+uint16_t OFDMCodec::SetPilotTones(uint16_t newPilotToneVector[], uint16_t nPilots) // nPilots might not be needed.
 {
-
+    return OK;
 }
 
 
@@ -276,15 +262,14 @@ uint16_t OFDMCodec::GetPilotTonesAmplitude()
 } 
 
 
-
 /**
-* Set new pilot tone amplitude and reconfigure apropriate objects.
+* Set new pilot tone amplitude(for all tones) and reconfigure apropriate objects.
 * 
 * @param newPilotToneAmplitude
 *
 * @return 0 On Success, else error number.
 *
-* @todo:
+* @todo: Reconfiguration of appropriate objects in later releases
 */
 uint16_t OFDMCodec::SetPilotTonesAmplitude(float newPilotToneAmplitude)
 {
@@ -297,21 +282,21 @@ uint16_t OFDMCodec::SetPilotTonesAmplitude(float newPilotToneAmplitude)
 *
 * @return Currently configured QAM Size(uint16_t)
 *
-* @todo:
 */
 uint16_t OFDMCodec::GetQAMSize()
 {
     return m_Settings.QAMSize;
 }
 
+
 /**
-* Sets the QAM scheme for data modulator
+* Sets the QAM scheme for data codec/modulator
 * 
 * @param newQAMSize (uint16_t) 
 *
 * @return  0 On Success, else error number. 
 *
-* @todo:
+* @todo: Reconfiguration of appropriate objects in later releases
 */
 uint16_t OFDMCodec::SetQAMSize(uint16_t newQAMSize)
 {
@@ -324,7 +309,6 @@ uint16_t OFDMCodec::SetQAMSize(uint16_t newQAMSize)
 *
 * @return Cyclic prefix size(uint16_t) 
 *
-* @todo:
 */
 uint16_t OFDMCodec::GetCyclicPrefixSize()
 {
@@ -339,7 +323,7 @@ uint16_t OFDMCodec::GetCyclicPrefixSize()
 *
 * @return 0 On Success, else error number.
 *
-* @todo:
+* @todo: Reconfiguration of appropriate objects in later releases
 */
 uint16_t OFDMCodec::SetCyclicPrefixSize(uint16_t newCyclicPrefixSize)
 {

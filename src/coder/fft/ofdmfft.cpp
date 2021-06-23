@@ -2,7 +2,6 @@
 * @file ofdmfft.cpp
 * @author Kamil Rog
 *
-* @section 
 * 
 */
 
@@ -17,7 +16,7 @@
 * 
 * @param type Specifies whether the object computes FFT or IFFT choices - FFTW_FORWARD(-1) FFTW_BACKWARD(+1)
 *
-* @return
+* @return 0 on success, else error number
 *
 */
 int ofdmFFT::Configure(uint16_t nPoints, int type)
@@ -41,7 +40,7 @@ int ofdmFFT::Configure(uint16_t nPoints, int type)
 /**
 * Destroys fftw plan and frees up allocated memory for input and output buffers
 * 
-* @return 0 on sucess, else error number
+* @return 0 on success, else error number
 *
 */    
 int ofdmFFT::Close()
@@ -57,7 +56,7 @@ int ofdmFFT::Close()
 * Computes FFT Based on the object's input (in) buffer and stores it in the object's output (out) buffer.
 * 
 *
-* @return 0 on sucess, else error number
+* @return 0 on success, else error number
 *
 */    
 int ofdmFFT::ComputeTransform()

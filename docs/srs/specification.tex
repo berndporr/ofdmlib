@@ -10,6 +10,7 @@
 \pagebreak
 
 \section*{Revision History}
+Still under editing for first release
 \pagebreak
 
 \tableofcontents
@@ -70,7 +71,7 @@ Encoder (Tx Chain):
 \begin{itemize}
 	\item Energy Dispersal
 	\item QAM Modulator
-	\item Pilot Tones Adder
+	\item Pilot Tones Addition
 	\item Inverse Fast Fourier Transform
 	\item Band-Pass Quadrature Modulator
 	\item Cyclic-Prefix
@@ -80,10 +81,12 @@ Encoder (Tx Chain):
 Decoder (Rx Chain):
 
 \begin{itemize}
-	\item Symbol-Start Detection
+	\item Cross-correlator 
 	\item Band-Pass Quadrature Demodulator
 	\item Fast Fourier Transform
 	\item Pilot Tone Detector
+	\item Channel Estimation
+	\item Equalisation
 	\item QAM Demodulator
 	\item Reverse of Energy Dispersal
 \end{itemize}
@@ -103,7 +106,6 @@ Currently ofdmlib is being developed on Linux operating system, Ubuntu Focal.
 The first major release is aimed to be delivered only for Linux operating system. 
 Open Source
 
-
 \subsection{Documentation}
 
 The following documentation is going to be delivered along with the software.
@@ -117,10 +119,9 @@ The following documentation is going to be delivered along with the software.
 \end{itemize}
 
 
-
 \subsection{Assumptions and Dependencies}
 
-The core of OFDM is the Fourier and inverse Fourier transforms, there are numerous libraries in public domain which are highly optimised therefore the ofdmlib is going to utilize such libraries, this has legal/financial implications for potential developers but as a result of required delivery date for first major release this is the preferable choice, in the future the feasibility of developing own FFT and IFFT algorithms can be assessed.
+The core of OFDM is the Fourier and inverse Fourier transforms, there are numerous libraries in public domain which are highly optimised therefore the ofdmlib is going to utilize such libraries, this has legal/financial implications for potential developers but as per required delivery date for first major release this is the preferable choice, in the future the feasibility of developing own FFT and IFFT algorithms can be assessed.
 
 \pagebreak
 \section{External Interface Requirements}
@@ -167,6 +168,8 @@ Development Tools and Technologies:
 
 ofdmlib does not contain any security or encryption features.
 
+\setlength{\parindent}{0em}
+\setlength{\parskip}{1em}
 
 \pagebreak
 \section{System Features}
@@ -192,10 +195,10 @@ The coder object wraps all the objects related to ofdm modulation and provides e
 
 Functional Requirements:
 
-REQ-1: The encoder and decoder settings need to be common. \par
-REQ-2: Setting variables must be private/protected. \par
-REQ-3: The encoder and decoder must contain a set of functions to get and set each setting. \par
-REQ-4: Coder must have a setting that specifies its role, encoder or decoder. \par
+REQ-1: The encoder and decoder settings need to be common and implemented as one object \par
+REQ-2: Codec must have a setting that specifies its role; encoder or decoder, configure and use appropriate functions \par
+REQ-3: Setting variables must be private/protected. \par
+REQ-4: The codec must contain a set of functions to get and set each setting. \par
 
 
 \subsection{OFDM Functional Objects (Tx \& Rx Chain)}
@@ -203,30 +206,32 @@ REQ-4: Coder must have a setting that specifies its role, encoder or decoder. \p
 
 \subsubsection{Energy Dispersal}
 
-Description and Priority
-The coders must have the ability to randomise the incoming data to make the signal as unique as possible.
-Priority: 5
+Description  \par
+The coders must have the ability to randomise the incoming data to make the signal as random as possible. \par
+Priority: 5 \par
 
-Stimulus/Response Sequences
+Stimulus/Response Sequences: \par
 
 
-Functional Requirements
+Functional Requirements: \par
 
 REQ-1: The encoder must have the ability to pseudo-randomise incoming data. The decoder must obtain the original data from the pseudo randomised data \par
 REQ-2: The seed must be set as a part of the coder initialization process. \par
 REQ-3: The seed must be read and modifiable through set and get functions. \par
 REQ-4: The energy dispersal must operate on the same data type as the data to be encoded. \par
+REQ-5: The energy dispersal must take the pointer to the data and randomise it. \par
 
+Note: For performance the Energy Dispersal and QAM De/Modulator can be integrated 
 
 \subsubsection{Digital Quadrature De/Modulator }
 
-Description and Priority \par
+Description \par
 The encoder needs to provide a flexible quadrature amplitude modulator \par
 Priority: 5
 
-Stimulus/Response Sequences \par 
+Stimulus/Response Sequences: \par 
 
-Functional Requirements \par
+Functional Requirements: \par
 
 REQ-1: Must create a binary stream from the incoming data and encoded it using specified scheme. \par
 REQ-2: The modulation scheme must be set as a part of the coder initialization process. \par
@@ -237,13 +242,13 @@ Note: 16,64,256 QAM could be developed if there is some time left before deadlin
 
 \subsubsection{Pilot Tones}
 
-Description
-The coders need to inject real valued tones at specified locations for the
+Description:
+The coders need to inject real valued tones at specified locations for the \par
 
-Stimulus/Response Sequences
-When QAM encoded data is to be inverse Fourier transformed into time domain a pilot tones need to be injected into an array of data at specified indices.
+Stimulus/Response Sequences: \par
+When QAM encoded data is to be inverse Fourier transformed into time domain a pilot tones need to be injected into an array of data at specified indices. \par
 
-Functional Requirements \par
+Functional Requirements: \par
 
 REQ-1: Pilot tones cannot cause erasures or errors. Data needs to be manipulated appropriately to prevent this. \par
 REQ-2: The Pilot tone locations can be specified as a number of samples between next tones with an offset or as an array of indices. \par
@@ -255,15 +260,15 @@ REQ-6: Decoder must sum all imaginary parts of the FFT. \par
 
 \subsubsection{Fourier and Inverse Fourier Transform}
 
-Description
-Discrete fast Fourier Transforms and are the key aspects of the OFDM 
+Description \par
+Discrete fast Fourier Transforms and are the key aspects of the OFDM \par
 
 Priority: 5
 
-Stimulus/Response Sequences
-On the encoding side, the inverse Fourier transform occurs after the QAM encoding and 
+Stimulus/Response Sequences \par
+On the encoding side, the inverse Fourier transform occurs after the QAM encoding and  \par
 
-Functional Requirements
+Functional Requirements \par 
 
 REQ-1: FFT buffers and methods must be encapsulated in one object.  \par
 REQ-2: The OFDM FFT object must manage memory appropriately to the specified settings. \par
@@ -275,26 +280,57 @@ REQ-6: FFT object configuration must be read and modifiable through set and get 
 
 \subsubsection{Band-Pass Modulator}
 
-Description
-Band-pass modulator upsamples the signal by interleaving real and complex samples.
+Description \par
+Band-pass modulator upsamples the signal by interleaving real and complex samples. \par
 
-Priority: 5 
+Priority: 5 \par
 
-Functional Requirements
-REQ-1: Upsample the signal at specified rate 
+Functional Requirements \par
+REQ-1: Upsample the signal at lowest rate \par
+
+Note: For performance purposes the Band-Pass De/Modulator can be combined with cyclic prefix.\par
+
 
 \subsubsection{Cyclic-Prefix}
 
-Description and Priority
+Description\par
 The Cyclic-prefix is added at the front of each symbol this occurs after upsampling by band-pass modulator and this is essentially the last step in the modulation scheme. \par
 
 Priority: 5  \par
  
 Stimulus/Response Sequences \par
 
-Functional Requirements:
+Functional Requirements:\par
 REQ-1: The cyclic-prefix must be added in encoding process and used in the decoder as a part of symbol start detection process. \par 
 REQ-2: The cyclic-prefix length must be encapsulated in settings object. \par
+
+
+\subsubsection{Channel Estimation}
+
+Description \par
+\par
+
+Priority: 5  \par
+
+Stimulus/Response Sequences \par
+
+Functional Requirements: \par
+REQ-1:  \par 
+REQ-2:  \par
+
+
+\subsubsection{Equalisation}
+
+Description and Priority
+\par
+
+Priority: 5  \par
+
+Stimulus/Response Sequences \par
+
+Functional Requirements: \par
+REQ-1:  \par 
+REQ-2:  \par
 
 \pagebreak
 \section{Non-functional Requirements}
@@ -304,6 +340,8 @@ REQ-2: The cyclic-prefix length must be encapsulated in settings object. \par
 REQ-1: The architecture of the software should allow for easy multi-threaded implementation for the engineer. \par
 
 \subsection{Performance Requirements}
+
+FFTW3 Uses its own format for complex numbers, the (I)FFT transform outputs in this format in later releases these functions could be modified to provided already upsampled output.
 
 
 \subsubsection{Filters}
@@ -317,7 +355,7 @@ REQ-1: Filters need to be implemented in efficient fashion without copying the d
 
 \subsubsection{Test Framework}
 
-The approach to this project is test driven development. A sophisticated Test framework must be developed from the start of the implementation of the software package to provide confidence that the functionality discussed in the section 4.1 has been successfully implemented.
+The approach to this project is test driven development. A sophisticated Test framework must be developed from the start of the implementation of the software package to provide confidence that the functionality discussed in the section 4.1 has been successfully implemented. \par
 
 REQ-1: Each feature must have a unit test. \par
 REQ-2: Each feature must be implemented into an integration test. \par 

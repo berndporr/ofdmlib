@@ -22,16 +22,18 @@
 \contentsline {subsection}{\numberline {4.1}System}{5}%
 \contentsline {subsubsection}{Data}{5}%
 \contentsline {subsubsection}{Coder object}{5}%
-\contentsline {subsection}{\numberline {4.2}OFDM Functional Objects (Tx \& Rx Chain)}{5}%
-\contentsline {subsubsection}{Energy Dispersal}{5}%
-\contentsline {subsubsection}{Digital Quadrature De/Modulator }{5}%
-\contentsline {subsubsection}{Pilot Tones}{6}%
-\contentsline {subsubsection}{Fourier and Inverse Fourier Transform}{6}%
-\contentsline {subsubsection}{Band-Pass Modulator}{7}%
-\contentsline {subsubsection}{Cyclic-Prefix}{7}%
-\contentsline {section}{\numberline {5}Non-functional Requirements}{8}%
-\contentsline {subsubsection}{Architecture}{8}%
-\contentsline {subsection}{\numberline {5.1}Performance Requirements}{8}%
-\contentsline {subsubsection}{Filters}{8}%
-\contentsline {subsection}{\numberline {5.2}Software Quality Attributes}{8}%
-\contentsline {subsubsection}{Test Framework}{8}%
+\contentsline {subsection}{\numberline {4.2}OFDM Functional Objects (Tx \& Rx Chain)}{6}%
+\contentsline {subsubsection}{Energy Dispersal}{6}%
+\contentsline {subsubsection}{Digital Quadrature De/Modulator }{6}%
+\contentsline {subsubsection}{Pilot Tones}{7}%
+\contentsline {subsubsection}{Fourier and Inverse Fourier Transform}{7}%
+\contentsline {subsubsection}{Band-Pass Modulator}{8}%
+\contentsline {subsubsection}{Cyclic-Prefix}{8}%
+\contentsline {subsubsection}{Channel Estimation}{9}%
+\contentsline {subsubsection}{Equalisation}{9}%
+\contentsline {section}{\numberline {5}Non-functional Requirements}{10}%
+\contentsline {subsubsection}{Architecture}{10}%
+\contentsline {subsection}{\numberline {5.1}Performance Requirements}{10}%
+\contentsline {subsubsection}{Filters}{10}%
+\contentsline {subsection}{\numberline {5.2}Software Quality Attributes}{10}%
+\contentsline {subsubsection}{Test Framework}{10}%

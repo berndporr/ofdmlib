@@ -29,7 +29,7 @@ BOOST_AUTO_TEST_SUITE(IntegrationTests)
 */
 BOOST_AUTO_TEST_CASE(EncodeDecode)
 {
-    printf("Testing OFDM Coder Object...");
+    printf("Testing OFDM Coder Object...\n");
     //BOOST_TEST_MESSAGE( "Testing:" );
     //BOOST_TEST_MESSAGE( "Variable:" << variable );
     uint16_t nPoints = 512;
@@ -39,8 +39,8 @@ BOOST_AUTO_TEST_CASE(EncodeDecode)
     uint16_t qamSize = 4;
 
     // Initialize ofdm coder objects
-    OFDMCodec encoder(FFTW_FORWARD, nPoints, complexTimeSeries, pilotToneStep, pilotToneAmplitude, qamSize);
-    OFDMCodec decoder(FFTW_BACKWARD, nPoints, complexTimeSeries, pilotToneStep, pilotToneAmplitude, qamSize);
+    OFDMCodec encoder(FFTW_BACKWARD, nPoints, complexTimeSeries, pilotToneStep, pilotToneAmplitude, qamSize);
+    OFDMCodec decoder(FFTW_FORWARD, nPoints, complexTimeSeries, pilotToneStep, pilotToneAmplitude, qamSize);
 
     // Setup random float generator
     srand( (unsigned)time( NULL ) );
@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(EncodeDecode)
     encoder.Encode(RandomInputArray);
     auto end = std::chrono::steady_clock::now();
 
-    std::cout << "Encode Elapsed time in nanoseconds: "
+    std::cout << "Encode elapsed time: "
         << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
         << " ns" << std::endl;
 
@@ -73,7 +73,7 @@ BOOST_AUTO_TEST_CASE(EncodeDecode)
     decoder.Decode();
     end = std::chrono::steady_clock::now();
 
-    std::cout << "Decode Elapsed time in nanoseconds: "
+    std::cout << "Decode elapsed time: "
     << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
     << " ns" << std::endl;
 
@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE(EncodeDecode)
     }
     end = std::chrono::steady_clock::now();
 
-    std::cout << "Normalize Elapsed time in nanoseconds: "
+    std::cout << "Normalize elapsed time: "
     << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
     << " ns" << std::endl;
 
@@ -95,8 +95,8 @@ BOOST_AUTO_TEST_CASE(EncodeDecode)
     // Print input and output buffers
     for (uint16_t i = 0; i < nPoints; i++)
     {
-        printf("Recovered Sample(time domain) Amplitude: %3d %+9.5f j%+9.5f Input to fft vs. %+9.5f j%+9.5f Output of IFFT\n",
-        i, encoder.m_fft.in[i][0], encoder.m_fft.in[i][1], decoder.m_fft.out[i][0], decoder.m_fft.out[i][1]);
+        //printf("Recovered Sample: %3d %+9.5f j%+9.5f Input to ifft vs. %+9.5f j%+9.5f Output of IFFT\n",
+        //i, encoder.m_fft.in[i][0], encoder.m_fft.in[i][1], decoder.m_fft.out[i][0], decoder.m_fft.out[i][1]);
 
         // Check if real and complex element match within defined precision of each other
         BOOST_CHECK_MESSAGE(

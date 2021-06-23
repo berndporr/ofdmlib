@@ -2,7 +2,6 @@
 * @file ofdmfft.h
 * @author Kamil Rog
 *
-* @section DESCRIPTION
 * 
 */
 #ifndef OFDM_FFT_H

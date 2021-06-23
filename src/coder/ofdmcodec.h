@@ -94,7 +94,7 @@ public:
     uint16_t GetPilotTonesIndicies(); // This should probably return an array of the pilotTones
     uint16_t GetPilotToneStep();
     uint16_t SetPilotTones(uint16_t newPilotToneStep);
-    uint16_t SetPilotTones(uint16_t newPilotToneSequence[], uint16_t nPilots); // nPilots might not be needed.
+    uint16_t SetPilotTones(uint16_t newPilotToneVector[], uint16_t nPilots); // nPilots might not be needed.
 
     uint16_t GetPilotTonesAmplitude();
     uint16_t SetPilotTonesAmplitude(float newPilotToneStep);
