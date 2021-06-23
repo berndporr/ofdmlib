@@ -53,18 +53,16 @@ ofdmlib is a flexible orthogonal-frequency division multiplexing(OFDM) C++ libra
 
 ### Software
 
-Currently ofdmlib is in development stages, you can view the [Roadmap]() for incoming features 
+Currently ofdmlib is in development stages, you can view the [Roadmap](https://github.com/krogk/ofdmlib#roadmap) for planned features. 
 
-[See Doxygen Documentation](https://krogk.github.io/ofdmlib/software/docs/Doxygen/html/index.html)
+[See Doxygen Documentation (Place holder for now)](https://krogk.github.io/ofdmlib/software/docs/Doxygen/html/index.html)
 <br />
 <br />
 
 
 ### Roadmap
 
-Next Software Release (v0.1) - FFT & IFFT 
-* [] Test Framework
-* [] FFT obeject & testing
+[Roadmap](https://github.com/krogk/ofdmlib/blob/main/docs/diagrams/roadmap/Roadmap.png)
 
 <!-- Getting Started -->
 ## Getting Started
