@@ -1,0 +1,367 @@
+\documentclass[]{report}
+
+% Title Page
+\title{ Software Requirements Specification \\ Real-time C++ Implementation of OFDM}
+\author{Perpared by: Kamil Rog \\ Spproved by: }
+
+\begin{document}
+\maketitle
+
+\pagebreak
+
+\section*{Revision History}
+Still under editing for first release
+\pagebreak
+
+\tableofcontents
+\thispagestyle{empty}
+\pagebreak
+
+\cleardoublepage
+\pagenumbering{arabic}
+
+\pagebreak
+
+\renewcommand{\thesection}{\arabic{section}}
+
+\setlength{\parindent}{0em}
+\setlength{\parskip}{0em}
+
+\section{Introduction}
+
+\subsection{Purpose}
+
+This specification is a part of the document set inspired by IEEE software life cycle, specifically software requirements specification(SRS) IEEE 29148 which purpose in this project is to identify key requirements leading up and for the first major release (v1.0) of orthogonal frequency-division multiplexing(OFDM) library, ofdmlib and exemplary use case, an audio demo application that is also used to increase robustness of the library through highlighting practical implementation issues.
+
+
+\subsection{Document Conventions}
+
+In this specification, higher-level requirements are assumed to be inherited by detailed requirements
+
+
+\subsection{Intended Audience and Reading Suggestions}
+
+This document has been written as guide to identify key functional and performance requirements for and leading up to the first major release (v1.0) of OFDM library. OFDM modulation scheme is complex thus it is recommended to have a fundamental understanding of the concept prior to reading this document to fully understand it's contents. A highly recommended introduction material to the topic can be found at (youtube link for Dr.Porr Lectures)
+
+In addition this document specifies purpose of the library, it's intended scope and limitations. Future developers, testers and project managers do not have to read this document in it's entirety, the attention of these groups can be focused only on sections 2.2-2.6 which give a list of the main features, the intended audience and limitations. Sections 3.3-3.4 provide a detailed account of the interfacing and 4 briefly describes each feature and specifies the requirements.
+
+For those who are considering using ofdmlib please confirm the licences of ofdmlib and its dependencies for your the intended use (section 3.3).
+
+
+\subsection{Product Scope}
+
+OFDM library aims to provide configurable, robust and efficient real-time C++ coders for systems operating on xxxx platform. This library is an attempt to encourage developers to use the library in their projects and hopefully( but not required to) share the developed code in public domain or provide feedback and feature requests for future releases.
+
+\subsection{References}
+
+Full project documentation can be found at: https://github.com/krogk/ofdmlib/docs
+
+\pagebreak
+\section{Overall Description}
+
+\subsection{Product Perspective}
+
+Currently no efficient OFDM implementation is available in public domain, this software package is intended to address this issue by providing a C++ library for such use. The implementation hopes to standardise the ofdm concept across products. 
+
+
+\subsection{Product Functions}
+
+Encoder (Tx Chain):
+
+\begin{itemize}
+	\item Energy Dispersal
+	\item QAM Modulator
+	\item Pilot Tones Addition
+	\item Inverse Fast Fourier Transform
+	\item Band-Pass Quadrature Modulator
+	\item Cyclic-Prefix
+\end{itemize}
+
+
+Decoder (Rx Chain):
+
+\begin{itemize}
+	\item Cross-correlator 
+	\item Band-Pass Quadrature Demodulator
+	\item Fast Fourier Transform
+	\item Pilot Tone Detector
+	\item Channel Estimation
+	\item Equalisation
+	\item QAM Demodulator
+	\item Reverse of Energy Dispersal
+\end{itemize}
+
+
+\subsection{User Classes and Characteristics}
+
+Library is intended for C++ developers who are timed-constrained or lack the full technical expertise and would like to implement OFDM scheme in their projects. The library aims to be professional.
+
+
+\subsection{Operating Environment}
+
+Currently ofdmlib is being developed on Linux operating system, Ubuntu Focal.
+
+\subsection{Design and Implementation Constraints}
+
+The first major release is aimed to be delivered only for Linux operating system. 
+Open Source
+
+\subsection{Documentation}
+
+The following documentation is going to be delivered along with the software.
+
+\begin{itemize}
+	\item SRS – Software requirements specification - IEEE 29148
+	\item SDD – Software design description - IEEE 1016
+	\item STD – Software test documentation - IEEE 29119
+	\item SUD – Software user documentation - IEEE 24748
+	\item Doxgyen - UML Generation From Code 
+\end{itemize}
+
+
+\subsection{Assumptions and Dependencies}
+
+The core of OFDM is the Fourier and inverse Fourier transforms, there are numerous libraries in public domain which are highly optimised therefore the ofdmlib is going to utilize such libraries, this has legal/financial implications for potential developers but as per required delivery date for first major release this is the preferable choice, in the future the feasibility of developing own FFT and IFFT algorithms can be assessed.
+
+\pagebreak
+\section{External Interface Requirements}
+
+\subsection{User Interfaces}
+
+OFDM is library not a stand-alone application, therefore no GUI is required, the working demo delivered alongside the library is intended to be minimalistic and operated from command line hence no GUI requirements specification has been produced for this project. 
+
+Error message standards
+
+\subsection{Audio Demo Interfaces}
+
+
+\subsubsection{Hardware Interfaces}
+
+The development on PC running Ubuntu 20 means there are kernel audio driver which can be used. Which is based on I2S communication Protocol.
+
+The developers 
+
+\subsubsection{Software Interfaces}
+
+
+Supported Operating Systems:
+
+\begin{itemize}
+	\item Ubuntu
+\end{itemize}
+
+Dependencies:
+
+\begin{itemize}
+	\item FFTW3
+\end{itemize}\textbf{}
+
+Development Tools and Technologies:
+\begin{itemize}
+	\item C++ 11
+	\item Cmake 3.20.2
+	\item BOOST
+\end{itemize}\textbf{}
+
+
+\subsection{Communications Interfaces}
+
+ofdmlib does not contain any security or encryption features.
+
+\setlength{\parindent}{0em}
+\setlength{\parskip}{1em}
+
+\pagebreak
+\section{System Features}
+
+The description of the features is brief as a detailed account of each feature purpose has been given in the section x.x theory.
+
+Priority of the feature scales from low(1) to high(5).
+For the release 1.0 and all releases leading up to it all features are crucial therefore the priority has not been given
+
+\subsection{System}
+
+\subsubsection{Data}
+
+REQ-1: The underlying FFT and IFFT needs to work on one data type, double float \par
+REQ-2: The ofdm coders must handle most common data types at the input. \par
+REQ-3: \par
+
+\subsubsection{Coder object}
+
+Description and Priority
+
+The coder object wraps all the objects related to ofdm modulation and provides easy to use interface.
+
+Functional Requirements:
+
+REQ-1: The encoder and decoder settings need to be common and implemented as one object \par
+REQ-2: Codec must have a setting that specifies its role; encoder or decoder, configure and use appropriate functions \par
+REQ-3: Setting variables must be private/protected. \par
+REQ-4: The codec must contain a set of functions to get and set each setting. \par
+
+
+\subsection{OFDM Functional Objects (Tx \& Rx Chain)}
+
+
+\subsubsection{Energy Dispersal}
+
+Description  \par
+The coders must have the ability to randomise the incoming data to make the signal as random as possible. \par
+Priority: 5 \par
+
+Stimulus/Response Sequences: \par
+
+
+Functional Requirements: \par
+
+REQ-1: The encoder must have the ability to pseudo-randomise incoming data. The decoder must obtain the original data from the pseudo randomised data \par
+REQ-2: The seed must be set as a part of the coder initialization process. \par
+REQ-3: The seed must be read and modifiable through set and get functions. \par
+REQ-4: The energy dispersal must operate on the same data type as the data to be encoded. \par
+REQ-5: The energy dispersal must take the pointer to the data and randomise it. \par
+
+Note: For performance the Energy Dispersal and QAM De/Modulator can be integrated 
+
+\subsubsection{Digital Quadrature De/Modulator }
+
+Description \par
+The encoder needs to provide a flexible quadrature amplitude modulator \par
+Priority: 5
+
+Stimulus/Response Sequences: \par 
+
+Functional Requirements: \par
+
+REQ-1: Must create a binary stream from the incoming data and encoded it using specified scheme. \par
+REQ-2: The modulation scheme must be set as a part of the coder initialization process. \par
+REQ-3: The modulation scheme must be read and modifiable through set and get functions. \par
+REQ-4: The modulation scheme must be 4 QAM. \par
+
+Note: 16,64,256 QAM could be developed if there is some time left before deadline.
+
+\subsubsection{Pilot Tones}
+
+Description:
+The coders need to inject real valued tones at specified locations for the \par
+
+Stimulus/Response Sequences: \par
+When QAM encoded data is to be inverse Fourier transformed into time domain a pilot tones need to be injected into an array of data at specified indices. \par
+
+Functional Requirements: \par
+
+REQ-1: Pilot tones cannot cause erasures or errors. Data needs to be manipulated appropriately to prevent this. \par
+REQ-2: The Pilot tone locations can be specified as a number of samples between next tones with an offset or as an array of indices. \par
+REQ-3: The pilot tone configuration, amplitude and locations, must be set as a part of the coder initialization process. \par
+REQ-4: The pilot tone configuration must be read and modifiable through set and get functions. \par
+REQ-5: Ideally the pilot tones should be set only once, upon the initialization of the IFFT input buffer or on configuration change. \par
+REQ-6: Decoder must sum all imaginary parts of the FFT. \par
+
+
+\subsubsection{Fourier and Inverse Fourier Transform}
+
+Description \par
+Discrete fast Fourier Transforms and are the key aspects of the OFDM \par
+
+Priority: 5
+
+Stimulus/Response Sequences \par
+On the encoding side, the inverse Fourier transform occurs after the QAM encoding and  \par
+
+Functional Requirements \par 
+
+REQ-1: FFT buffers and methods must be encapsulated in one object.  \par
+REQ-2: The OFDM FFT object must manage memory appropriately to the specified settings. \par
+REQ-3: The OFDM FFT object must configure the direction of the transform.  \par
+REQ-4: The choice between real(mirrored spectrum) and complex time series. \par
+REQ-5: FFT object configuration must be set as part of the coder initialization process. \par
+REQ-6: FFT object configuration must be read and modifiable through set and get functions. \par
+
+
+\subsubsection{Band-Pass Modulator}
+
+Description \par
+Band-pass modulator upsamples the signal by interleaving real and complex samples. \par
+
+Priority: 5 \par
+
+Functional Requirements \par
+REQ-1: Upsample the signal at lowest rate \par
+
+Note: For performance purposes the Band-Pass De/Modulator can be combined with cyclic prefix.\par
+
+
+\subsubsection{Cyclic-Prefix}
+
+Description\par
+The Cyclic-prefix is added at the front of each symbol this occurs after upsampling by band-pass modulator and this is essentially the last step in the modulation scheme. \par
+
+Priority: 5  \par
+ 
+Stimulus/Response Sequences \par
+
+Functional Requirements:\par
+REQ-1: The cyclic-prefix must be added in encoding process and used in the decoder as a part of symbol start detection process. \par 
+REQ-2: The cyclic-prefix length must be encapsulated in settings object. \par
+
+
+\subsubsection{Channel Estimation}
+
+Description \par
+\par
+
+Priority: 5  \par
+
+Stimulus/Response Sequences \par
+
+Functional Requirements: \par
+REQ-1:  \par 
+REQ-2:  \par
+
+
+\subsubsection{Equalisation}
+
+Description and Priority
+\par
+
+Priority: 5  \par
+
+Stimulus/Response Sequences \par
+
+Functional Requirements: \par
+REQ-1:  \par 
+REQ-2:  \par
+
+\pagebreak
+\section{Non-functional Requirements}
+
+\subsubsection{Architecture}
+
+REQ-1: The architecture of the software should allow for easy multi-threaded implementation for the engineer. \par
+
+\subsection{Performance Requirements}
+
+FFTW3 Uses its own format for complex numbers, the (I)FFT transform outputs in this format in later releases these functions could be modified to provided already upsampled output.
+
+
+\subsubsection{Filters}
+
+REQ-1: Filters need to be implemented in efficient fashion without copying the data sets. \par
+
+
+\subsection{Software Quality Attributes}
+
+
+
+\subsubsection{Test Framework}
+
+The approach to this project is test driven development. A sophisticated Test framework must be developed from the start of the implementation of the software package to provide confidence that the functionality discussed in the section 4.1 has been successfully implemented. \par
+
+REQ-1: Each feature must have a unit test. \par
+REQ-2: Each feature must be implemented into an integration test. \par 
+REQ-3: Each unit test and integration test must display a measure of performance, execution time or clock cycles. \par
+
+
+\pagebreak
+
+\end{document}          
