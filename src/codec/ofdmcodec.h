@@ -18,6 +18,7 @@
 #include <fftw3.h>
 
 #include "ofdmfft.h"
+#include "bandpass.h"
 
 
 struct OFDMSettings
@@ -58,7 +59,7 @@ class OFDMCodec {
 
 public: 
 
-	OFDMCodec(int type, uint16_t nPoints, bool complexTimeSeries, uint16_t pilotToneStep, float pilotToneAmplitude, uint16_t qamSize)
+	OFDMCodec(int type, uint16_t nPoints, bool complexTimeSeries, uint16_t pilotToneStep, float pilotToneAmplitude, uint16_t qamSize, double *buffer)
     {
     	m_Settings.EnergyDispersalSeed = 0;
         m_Settings.nPoints             = nPoints;
@@ -68,12 +69,23 @@ public:
         m_Settings.QAMSize             = qamSize;
         m_Settings.type                = type;
         m_fft.Configure(nPoints, type);
+
+        if(type == FFTW_BACKWARD)
+        {
+            m_bandPass.Configure(nPoints, type, m_fft.out, buffer);
+        }
+        if(type == FFTW_FORWARD)
+        {
+            m_bandPass.Configure(nPoints, type, m_fft.in, buffer);
+        } 
+        
 	}
 
     // Encoding Related Functions
     int Encode(float *data);
 
     int QAMModulatorPlaceholder(float *data);
+    int QAMDemodulatorPlaceholder(double *data);
 
     // Decode
     int Decode();
@@ -111,6 +123,8 @@ public:
 private:
     // Settings
     OFDMSettings m_Settings;
+    BandPassModulator m_bandPass;
+    
 
 };
 

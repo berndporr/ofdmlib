@@ -34,6 +34,7 @@ int OFDMCodec::Encode(float *data)
 {
     QAMModulatorPlaceholder(data);
     m_fft.ComputeTransform();
+    m_bandPass.Modulate();
     return 0;
 }
 
@@ -72,9 +73,33 @@ int OFDMCodec::QAMModulatorPlaceholder(float *data)
 */
 int OFDMCodec::Decode()
 {
+    m_bandPass.Demodulate();
     m_fft.ComputeTransform();
     return 0;
 }
+
+
+/**
+* A place holder function for QAM Modulator 
+* It just copies over the data from one aray into fft object input
+* 
+* @param data pointer to float data array
+*
+* @return 0 On Success, else error number.
+*
+* @todo: This needs to be implemented for release v0.5
+*/
+int OFDMCodec::QAMDemodulatorPlaceholder(double *data)
+{
+    // Generate random floats 
+    for(uint16_t i = 0; i < m_Settings.nPoints; i++)
+    {
+        data[(i*2)] = m_fft.out[i][0];
+        data[(i*2)+1] = m_fft.out[i][1];
+    }
+    return 0;
+}
+
 
 
 // Settings Functions //

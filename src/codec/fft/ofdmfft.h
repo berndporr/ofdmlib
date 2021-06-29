@@ -36,7 +36,7 @@ public:
 	}
 
 	/**
-	* Constructor runs setup function and sets the setup flag.
+	* Constructor runs configure function.
 	* 
 	* @param nPoints Number(uint16_t) of FFT / IFFT coefficients
 	* @param type Specifies whether the object computes FFT or IFFT choices - FFTW_FORWARD(-1) FFTW_BACKWARD(+1)

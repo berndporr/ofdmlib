@@ -29,7 +29,10 @@ int ofdmFFT::Configure(uint16_t nPoints, int type)
     }
     in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * nPoints);
     out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * nPoints);
-    fftplan = fftw_plan_dft_1d(nPoints, in, out, type, FFTW_ESTIMATE);
+    // Measure if many of the transforms of the siza are going to be performed
+    // otherwise use FFTW_ESTIMATE 
+    fftplan = fftw_plan_dft_1d(nPoints, in, out, type, FFTW_MEASURE); 
+
 
     // Set configure flag
     configured = 1;

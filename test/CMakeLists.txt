@@ -9,10 +9,16 @@ include_directories (${TEST_SOURCE_DIR}/src
 add_definitions (-DBOOST_TEST_DYN_LINK)
 
 # Add executable
+
+# Unit Tests
 add_executable (FourierTransformsTest unit/FourierTransformsTest.cpp)
+add_executable (BandPassModulatorTest unit/BandPassModulatorTest.cpp)
+
+
+# Integration Tests
 add_executable (IntegrationTest integration/IntegrationTests.cpp)
 
-# Link Libraries
+# Link libraries to unit tests
 target_link_libraries (FourierTransformsTest
                       ofdmlib
                       fftw3
@@ -21,7 +27,17 @@ target_link_libraries (FourierTransformsTest
                       ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
 )
 
-# Link Libraries
+
+target_link_libraries (BandPassModulatorTest
+                      ofdmlib
+                      fftw3
+                      ${Boost_FILESYSTEM_LIBRARY}
+                      ${Boost_SYSTEM_LIBRARY}
+                      ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+)
+
+
+# Link libraries to integration tests
 target_link_libraries (IntegrationTest
                       ofdmlib
                       fftw3
@@ -30,6 +46,11 @@ target_link_libraries (IntegrationTest
                       ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
 )
 
-# Add Tests
+
+# Add unit tests
 add_test (NAME Fourier_Transforms_Test COMMAND FourierTransformsTest)
+add_test (NAME Band_Pass_Modulator_Test COMMAND BandPassModulatorTest)
+
+
+# Add integration tests
 add_test (NAME Integration_Test COMMAND IntegrationTest)
