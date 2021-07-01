@@ -18,6 +18,7 @@
 #include <fftw3.h>
 
 #include "ofdmfft.h"
+#include "bandpass.h"
 
 
 struct OFDMSettings
@@ -27,7 +28,7 @@ struct OFDMSettings
     uint16_t EnergyDispersalSeed;
     uint16_t nPoints; // Total number of FFT & IFFT coefficients 
 	uint16_t pilotToneStep; // Pilot Tones
-    uint16_t pilotToneAmplitude; // Pilot Tones
+    float    pilotToneAmplitude; // Pilot Tones
     uint16_t guardInterval; // The time between the current and consecutive ofdm symbol
     uint16_t QAMSize; // QAM Modulator 
     uint32_t cyclicPrefixSize; // Cyclic-Prefix
@@ -58,22 +59,18 @@ class OFDMCodec {
 
 public: 
 
-	OFDMCodec(int type, uint16_t nPoints, bool complexTimeSeries, uint16_t pilotToneStep, float pilotToneAmplitude, uint16_t qamSize)
+	OFDMCodec(OFDMSettings settingsStruct, double *buffer)
     {
-    	m_Settings.EnergyDispersalSeed = 0;
-        m_Settings.nPoints             = nPoints;
-        m_Settings.complexTimeSeries   = complexTimeSeries;
-        m_Settings.pilotToneStep       = pilotToneStep;
-        m_Settings.pilotToneAmplitude  = pilotToneAmplitude;
-        m_Settings.QAMSize             = qamSize;
-        m_Settings.type                = type;
-        m_fft.Configure(nPoints, type);
+        Configure(settingsStruct, buffer);
 	}
 
     // Encoding Related Functions
     int Encode(float *data);
 
+    int Configure(OFDMSettings settingsStruct, double *buffer);
+
     int QAMModulatorPlaceholder(float *data);
+    int QAMDemodulatorPlaceholder(double *data);
 
     // Decode
     int Decode();
@@ -111,6 +108,8 @@ public:
 private:
     // Settings
     OFDMSettings m_Settings;
+    BandPassModulator m_bandPass;
+    
 
 };
 

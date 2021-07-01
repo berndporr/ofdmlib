@@ -23,17 +23,21 @@ set(INCLUDE_DIRS
    ${CMAKE_CURRENT_SOURCE_DIR}/tx
    ${CMAKE_CURRENT_SOURCE_DIR}/rx
    ${CMAKE_CURRENT_SOURCE_DIR}/demo
-   ${CMAKE_CURRENT_SOURCE_DIR}/coder
-   ${CMAKE_CURRENT_SOURCE_DIR}/coder/fft
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/fft
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/band-pass-modulator
 )
 
 # Set Source files
 set(SOURCE_FILE    
-   ${CMAKE_CURRENT_SOURCE_DIR}/coder/fft/ofdmfft.h
-   ${CMAKE_CURRENT_SOURCE_DIR}/coder/fft/ofdmfft.cpp 
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/fft/ofdmfft.h
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/fft/ofdmfft.cpp 
 
-   ${CMAKE_CURRENT_SOURCE_DIR}/coder/ofdmcodec.h
-   ${CMAKE_CURRENT_SOURCE_DIR}/coder/ofdmcodec.cpp 
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/band-pass-modulator/bandpass.h
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/band-pass-modulator/bandpass.cpp 
+
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/ofdmcodec.h
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/ofdmcodec.cpp 
 )
 
 # Create library

@@ -34,6 +34,7 @@ int OFDMCodec::Encode(float *data)
 {
     QAMModulatorPlaceholder(data);
     m_fft.ComputeTransform();
+    m_bandPass.Modulate();
     return 0;
 }
 
@@ -72,12 +73,69 @@ int OFDMCodec::QAMModulatorPlaceholder(float *data)
 */
 int OFDMCodec::Decode()
 {
+    m_bandPass.Demodulate();
     m_fft.ComputeTransform();
+    m_fft.Normalise();
     return 0;
 }
 
 
+/**
+* A place holder function for QAM Modulator 
+* It just copies over the data from one aray into fft object input
+* 
+* @param data pointer to float data array
+*
+* @return 0 On Success, else error number.
+*
+* @todo: This needs to be implemented for release v0.5
+*/
+int OFDMCodec::QAMDemodulatorPlaceholder(double *data)
+{
+    // Generate random floats 
+    for(uint16_t i = 0; i < m_Settings.nPoints; i++)
+    {
+        data[(i*2)] = m_fft.out[i][0];
+        data[(i*2)+1] = m_fft.out[i][1];
+    }
+    return 0;
+}
+
+
+
 // Settings Functions //
+
+
+/**
+* Update energy dispersal seed
+* 
+* @param type integer for pseudo number generator (uint16_t)
+* @param nPoints integer for pseudo number generator (uint16_t)
+* @param complexTimeSeries integer for pseudo number generator (uint16_t)
+* @param pilotToneStep integer for pseudo number generator (uint16_t)
+* @param pilotToneAmplitude integer for pseudo number generator (uint16_t)
+* @param qamSize integer for pseudo number generator (uint16_t)
+* @param buffer integer for pseudo number generator (uint16_t)
+*
+* @return 0 On Success, else error number.
+*
+*/
+int  OFDMCodec::Configure(OFDMSettings settingsStruct, double *buffer)
+{
+    m_Settings = settingsStruct;
+    m_fft.Configure(settingsStruct.nPoints, settingsStruct.type);
+
+    if(settingsStruct.type == FFTW_BACKWARD)
+    {
+        m_bandPass.Configure(settingsStruct.nPoints, m_fft.out, buffer);
+    }
+
+    if(settingsStruct.type == FFTW_FORWARD)
+    {
+        m_bandPass.Configure(settingsStruct.nPoints, m_fft.in, buffer);
+    } 
+    return OK;
+}
 
 
 /**
