@@ -61,6 +61,7 @@ public:
 	}
 
 	int Configure(uint16_t nPoints, int type);
+	int Normalise();
 	int Close();
 	int ComputeTransform();
 
@@ -71,6 +72,7 @@ public:
 
 private:
 
+	uint16_t nFFTPoints = 0;
 	int configured = 0;
     fftw_plan fftplan; /// FFT plan 
 

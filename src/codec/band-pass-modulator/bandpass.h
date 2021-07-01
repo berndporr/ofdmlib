@@ -26,7 +26,7 @@
  * +Real(c(n)), +Imag(c(n)), -Real(c(n+1), -Imag(c(n+1))
  * 
  * The demodulator is the inverse of this process and combines
- * the real and imaginary pairs back to form that IFFT outputs.
+ * the real and imaginary pairs back to form IFFT output.
  * 
  */
 class BandPassModulator {
@@ -45,20 +45,18 @@ public:
 	* Constructor runs setup function and sets the setup flag.
 	* 
 	* @param nPoints Number(uint16_t) of FFT / IFFT coefficients
-	* @param type Specifies whether the object is demodulator(-1) or modulator(+1)
 	* @param pComplex pointer to the complex buffer output of IFFT or input to FFT
 	* @param pDouble pointer to double array
 	*
 	*/
-	BandPassModulator(size_t nPoints, int type, fftw_complex *pComplex, double *pDouble)
+	BandPassModulator(size_t nPoints, fftw_complex *pComplex, double *pDouble)
 	{
-		Configure(nPoints, type, pComplex, pDouble);
+		Configure(nPoints, pComplex, pDouble);
 	}
 
 	/**
-	* Destructor runs close function.
-	*
-	* @return -
+	* Destructor 
+	* Runs close function.
 	*
 	*/
 	~BandPassModulator()
@@ -66,7 +64,7 @@ public:
 		Close();
 	}
 
-	int Configure(uint16_t fftPoints, int type, fftw_complex *pComplex, double *pDouble);
+	int Configure(uint16_t fftPoints, fftw_complex *pComplex, double *pDouble);
 	int Close();
 	int Modulate();
 	int Demodulate();
@@ -74,12 +72,18 @@ public:
 private:
 
 	int configured = 0;
-    int type; /// FFT plan 
 	uint16_t nPoints = 0;
 
-	fftw_complex *complexBuffer; /// Input buffer for the Demodulator / Output buffer for demodulator.
-	double *doubleBuffer;
+	/// Input buffer for the modulator / Output buffer for demodulator.
+	/// This must point to the Output of IFFT for modulator and the
+	/// input of FFT for demodulator.
+	fftw_complex *complexBuffer; 
 
+
+	/// Output buffer for the Demodulator / Input buffer for demodulator.
+	/// This must point to the desired tx destination buffer for modulator
+	///  and the sampled signal for demodulator.
+	double *doubleBuffer; 
 
 };
 

@@ -59,8 +59,8 @@ BOOST_AUTO_TEST_CASE(ModToDemod)
         modulatorInput[i][1] = (float) rand()/RAND_MAX;
     }
 
-    BandPassModulator modulator(nPoints, -1, modulatorInput, modulatorOutput);
-    BandPassModulator demodulator(nPoints, +1, demodulatorOutput, modulatorOutput);
+    BandPassModulator modulator(nPoints,  modulatorInput, modulatorOutput);
+    BandPassModulator demodulator(nPoints, demodulatorOutput, modulatorOutput);
 
     // Measure wall time of the ifft execution.
     auto start = std::chrono::steady_clock::now();

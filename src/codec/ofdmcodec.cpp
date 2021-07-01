@@ -75,6 +75,7 @@ int OFDMCodec::Decode()
 {
     m_bandPass.Demodulate();
     m_fft.ComputeTransform();
+    m_fft.Normalise();
     return 0;
 }
 
@@ -103,6 +104,38 @@ int OFDMCodec::QAMDemodulatorPlaceholder(double *data)
 
 
 // Settings Functions //
+
+
+/**
+* Update energy dispersal seed
+* 
+* @param type integer for pseudo number generator (uint16_t)
+* @param nPoints integer for pseudo number generator (uint16_t)
+* @param complexTimeSeries integer for pseudo number generator (uint16_t)
+* @param pilotToneStep integer for pseudo number generator (uint16_t)
+* @param pilotToneAmplitude integer for pseudo number generator (uint16_t)
+* @param qamSize integer for pseudo number generator (uint16_t)
+* @param buffer integer for pseudo number generator (uint16_t)
+*
+* @return 0 On Success, else error number.
+*
+*/
+int  OFDMCodec::Configure(OFDMSettings settingsStruct, double *buffer)
+{
+    m_Settings = settingsStruct;
+    m_fft.Configure(settingsStruct.nPoints, settingsStruct.type);
+
+    if(settingsStruct.type == FFTW_BACKWARD)
+    {
+        m_bandPass.Configure(settingsStruct.nPoints, m_fft.out, buffer);
+    }
+
+    if(settingsStruct.type == FFTW_FORWARD)
+    {
+        m_bandPass.Configure(settingsStruct.nPoints, m_fft.in, buffer);
+    } 
+    return OK;
+}
 
 
 /**

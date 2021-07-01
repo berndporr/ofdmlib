@@ -33,6 +33,7 @@ int ofdmFFT::Configure(uint16_t nPoints, int type)
     // otherwise use FFTW_ESTIMATE 
     fftplan = fftw_plan_dft_1d(nPoints, in, out, type, FFTW_MEASURE); 
 
+    nFFTPoints = nPoints;
 
     // Set configure flag
     configured = 1;
@@ -54,6 +55,23 @@ int ofdmFFT::Close()
     return 0;
 }
 
+
+/**
+* Normalises the output of the FFT 
+* 
+* @return 0 on success, else error number
+*
+*/  
+int ofdmFFT::Normalise()
+{
+    double multiplicationFactor = 1./nFFTPoints;
+    for (uint16_t i = 0; i < nFFTPoints; i++)
+    {
+        out[i][0] *= multiplicationFactor;
+        out[i][1] *= multiplicationFactor;
+    }
+    return 0;
+}
 
 /**
 * Computes FFT Based on the object's input (in) buffer and stores it in the object's output (out) buffer.

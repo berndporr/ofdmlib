@@ -22,33 +22,43 @@
 BOOST_AUTO_TEST_SUITE(IntegrationTests)
 
 /**
-*  This test simulates entire encoding and decoding process.
-*  Only one symbol, this test does not transmit the data 
+*  This test simulates entire encoding and decoding process
+*  of only one symbol, this test does not transmit the data 
 *  through a physical medium.
 * 
 */
 BOOST_AUTO_TEST_CASE(EncodeDecode)
 {
     printf("Testing OFDM Coder Object...\n");
-    uint16_t nPoints = 512;
-    bool complexTimeSeries = false;
-    uint16_t pilotToneStep = 16;
-    float pilotToneAmplitude = 2.0;
-    uint16_t qamSize = 4;
 
-    double txData[nPoints*2];
-    double decoderOutput[nPoints*2];
+    // Initialize ofdm coder setting structs and objects
 
-    // Initialize ofdm coder objects
-    OFDMCodec encoder(FFTW_BACKWARD, nPoints, complexTimeSeries, pilotToneStep, pilotToneAmplitude, qamSize, txData);
-    OFDMCodec decoder(FFTW_FORWARD, nPoints, complexTimeSeries, pilotToneStep, pilotToneAmplitude, qamSize, txData);
+    OFDMSettings encoderSettings; 
+    encoderSettings.type = FFTW_BACKWARD;
+	encoderSettings.complexTimeSeries = false;
+    encoderSettings.EnergyDispersalSeed = 0;
+    encoderSettings.nPoints = 512; 
+	encoderSettings.pilotToneStep = 16; 
+    encoderSettings.pilotToneAmplitude = 2.0; 
+    encoderSettings.guardInterval = 0; 
+    encoderSettings.QAMSize = 4; 
+    encoderSettings.cyclicPrefixSize = 128; 
+
+    OFDMSettings decoderSettings = encoderSettings;
+    decoderSettings.type = FFTW_FORWARD;
+
+    double txData[encoderSettings.nPoints*2];
+    double decoderOutput[encoderSettings.nPoints*2];
+
+    OFDMCodec encoder(encoderSettings, txData);
+    OFDMCodec decoder(decoderSettings, txData);
 
     // Setup random float generator
     srand( (unsigned)time( NULL ) );
 
     // Generate Array of random floats
-    float RandomInputArray[nPoints*2];
-    for (uint16_t i = 0; i < nPoints*2; i++)
+    float RandomInputArray[encoderSettings.nPoints*2];
+    for (uint16_t i = 0; i < encoderSettings.nPoints*2; i++)
     {
         RandomInputArray[i] = (float) rand()/RAND_MAX;
     }
@@ -62,7 +72,6 @@ BOOST_AUTO_TEST_CASE(EncodeDecode)
     << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
     << " ns" << std::endl;
 
-
     // Decode
     start = std::chrono::steady_clock::now();
     decoder.Decode();
@@ -72,28 +81,16 @@ BOOST_AUTO_TEST_CASE(EncodeDecode)
     << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
     << " ns" << std::endl;
 
-    // Normalize 
-    start = std::chrono::steady_clock::now();
-    for (uint16_t i = 0; i < nPoints; i++)
-    {
-        decoder.m_fft.out[i][0] *= 1./nPoints;
-        decoder.m_fft.out[i][1] *= 1./nPoints;
-    }
-    end = std::chrono::steady_clock::now();
-
-    std::cout << "Normalize elapsed time: "
-    << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-    << " ns" << std::endl;
-
-    // Copy the Output of the FFT After modulation
+    // Copy the Output of the decoder after QAM Demodulation
     decoder.QAMDemodulatorPlaceholder(decoderOutput);
 
     // Check the input and output are within threshold
-    for (uint16_t i = 0; i < nPoints*2; i++)
+    for (uint16_t i = 0; i < encoderSettings.nPoints*2; i++)
     {
-
+        /*
         printf("Recovered Sample: %3d %+9.5f vs. %+9.5f\n",
-        i,RandomInputArray[i], decoderOutput[i]);
+        i, RandomInputArray[i], decoderOutput[i]);
+        */
 
         // Check if real and complex element match within defined precision of each other
         BOOST_CHECK_MESSAGE( (std::abs(RandomInputArray[i] - decoderOutput[i])  <= FFT_DIFFERENCE_THRESHOLD), "Values vary more than threshold!" ); 
