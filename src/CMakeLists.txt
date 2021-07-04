@@ -20,12 +20,12 @@ find_package(Threads REQUIRED)
 # Set Include Directories
 set(INCLUDE_DIRS
    ${CMAKE_CURRENT_SOURCE_DIR}
-   ${CMAKE_CURRENT_SOURCE_DIR}/tx
-   ${CMAKE_CURRENT_SOURCE_DIR}/rx
    ${CMAKE_CURRENT_SOURCE_DIR}/demo
+   ${CMAKE_CURRENT_SOURCE_DIR}/utils
    ${CMAKE_CURRENT_SOURCE_DIR}/codec
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/fft
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/band-pass-modulator
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/cyclic-prefix
 )
 
 # Set Source files
@@ -35,6 +35,11 @@ set(SOURCE_FILE
 
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/band-pass-modulator/bandpass.h
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/band-pass-modulator/bandpass.cpp 
+
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/cyclic-prefix/cyclicprefix.h
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/cyclic-prefix/cyclicprefix.cpp
+
+   ${CMAKE_CURRENT_SOURCE_DIR}/utils/gnuplot-iostream.h
 
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/ofdmcodec.h
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/ofdmcodec.cpp 
