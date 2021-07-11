@@ -65,13 +65,14 @@ int ofdmFFT::Close()
 int ofdmFFT::Normalise()
 {
     double multiplicationFactor = 1./nFFTPoints;
-    for (uint16_t i = 0; i < nFFTPoints; i++)
+    for (uint32_t i = 0; i < nFFTPoints; i++)
     {
         out[i][0] *= multiplicationFactor;
         out[i][1] *= multiplicationFactor;
     }
     return 0;
 }
+
 
 /**
 * Computes FFT Based on the object's input (in) buffer and stores it in the object's output (out) buffer.
@@ -82,6 +83,23 @@ int ofdmFFT::Normalise()
 */    
 int ofdmFFT::ComputeTransform()
 {
-    fftw_execute(fftplan); 
+    fftw_execute(fftplan);
+    return 0;
+}
+
+
+/**
+* Computes FFT using object's configured plan and input(in) buffer
+* and stores it in specified destination.
+* 
+* @param dest pointer to the fftw_complex array
+*
+*
+* @return 0 on success, else error number
+*
+*/   
+int ofdmFFT::ComputeTransform(fftw_complex *dest)
+{
+    fftw_execute_dft(fftplan, in, dest);
     return 0;
 }

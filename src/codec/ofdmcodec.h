@@ -19,6 +19,7 @@
 
 #include "ofdmfft.h"
 #include "bandpass.h"
+#include "cyclicprefix.h"
 
 
 struct OFDMSettings
@@ -59,17 +60,18 @@ class OFDMCodec {
 
 public: 
 
-	OFDMCodec(OFDMSettings settingsStruct, double *buffer)
+	OFDMCodec(OFDMSettings settingsStruct, double *buffer, uint32_t bufferSize)
     {
-        Configure(settingsStruct, buffer);
+        Configure(settingsStruct, buffer, bufferSize);
 	}
 
     // Encoding Related Functions
-    int Encode(float *data);
+    int Encode(double *inputData);
+    int Encode(double *inputData, double *outputData);
 
-    int Configure(OFDMSettings settingsStruct, double *buffer);
+    int Configure(OFDMSettings settingsStruct, double *buffer, uint32_t bufferSize);
 
-    int QAMModulatorPlaceholder(float *data);
+    int QAMModulatorPlaceholder(double *data);
     int QAMDemodulatorPlaceholder(double *data);
 
     // Decode
@@ -109,6 +111,7 @@ private:
     // Settings
     OFDMSettings m_Settings;
     BandPassModulator m_bandPass;
+    Correlator m_correlator;
     
 
 };

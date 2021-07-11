@@ -15,20 +15,44 @@
 #include <iostream>
 #include <math.h>
 #include <fftw3.h>
+#include <cstring>
 
 
 /**
- * @brief AutoCorrelator
+ * Creates cycli prefix by copying the symbols end to memory
+ * preceding the start of the symbol
+ * 
+ * @param symbolStart pointer to the start of the symbol, including prefix
+ * 
+ * @param symbolSize size of the symbol excluding prefix
+ * 
+ * @param prefixSize number of samples included in the prefix
+ * 
+ * @return 0 on success, else error number
  * 
  */
-class AutoCorrelator {
+static int AddCyclicPrefix(double *symbol, uint32_t symbolSize, uint32_t prefixSize)
+{
+	// Copy the Cyclic Prefix
+	memcpy(&symbol[0], &symbol[symbolSize], (sizeof(double)*prefixSize));
+	return 0;
+}
+
+
+/**
+ * @brief Correlator object repsonsible for calculating correlation
+ * between signal and it's delayed version, where the expected prefix of 
+ * a symbol should be.
+ * 
+ */
+class Correlator {
 
 public:
 
 	/**
 	* Default constructor
 	*/
-	AutoCorrelator()
+	Correlator()
 	{
 
 	}
@@ -42,7 +66,7 @@ public:
 	* @param buffSize size(uint32_t) of the buffer 
 	*
 	*/
-	AutoCorrelator(uint16_t nPoints, uint16_t prefixSize, double *pDouble, uint32_t buffSize)
+	Correlator(uint16_t nPoints, uint16_t prefixSize, double *pDouble, uint32_t buffSize)
 	{
 		Configure(nPoints, prefixSize, pDouble, buffSize);
 	}
@@ -52,7 +76,7 @@ public:
 	* Runs close function.
 	*
 	*/
-	~AutoCorrelator()
+	~Correlator()
 	{
 		Close();
 	}
@@ -68,7 +92,7 @@ private:
 
 	int configured = 0;
 	uint16_t nPrefix = 0;
-	float threshold = 0;
+	double threshold = 30.0; // TODO: Calibration function which listens to the noise and sets this value
 	uint32_t startOffset = 0;
 	uint32_t offset = 0;
 	uint32_t bufferSize = 0;

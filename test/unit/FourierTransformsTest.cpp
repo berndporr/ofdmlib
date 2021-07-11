@@ -52,8 +52,8 @@ BOOST_AUTO_TEST_CASE(IFFTtoFFT)
     // Generate random floats 
     for (uint16_t i = 0; i < nPoints; i++)
     {
-        ifft.in[i][0] = (float) rand()/RAND_MAX;
-        ifft.in[i][1] = (float) rand()/RAND_MAX;
+        ifft.in[i][0] = (double) rand()/RAND_MAX;
+        ifft.in[i][1] = (double) rand()/RAND_MAX;
     }
     
     // Measure wall time of the ifft execution.
@@ -244,8 +244,8 @@ BOOST_AUTO_TEST_CASE(FFTtoIFFT)
     // Generate random floats 
     for (uint16_t i = 0; i < nPoints; i++)
     {
-        forwardfft.in[i][0] = (float) rand()/RAND_MAX;
-        forwardfft.in[i][1] = (float) rand()/RAND_MAX;
+        forwardfft.in[i][0] = (double) rand()/RAND_MAX;
+        forwardfft.in[i][1] = (double) rand()/RAND_MAX;
     }
     
     // Measure wall time of the ifft execution.
@@ -450,8 +450,8 @@ BOOST_AUTO_TEST_CASE(Reconfiguration)
 
         for (uint16_t i = 0; i < PowOf2Arr[j]; i++)
         {
-            forwardfft.in[i][0] = (float) rand()/RAND_MAX;
-            forwardfft.in[i][1] = (float) rand()/RAND_MAX;
+            forwardfft.in[i][0] = (double) rand()/RAND_MAX;
+            forwardfft.in[i][1] = (double) rand()/RAND_MAX;
         }
 
         // Measure wall time of the ifft execution.

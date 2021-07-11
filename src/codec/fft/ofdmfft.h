@@ -64,6 +64,7 @@ public:
 	int Normalise();
 	int Close();
 	int ComputeTransform();
+	int ComputeTransform(fftw_complex *dest);
 
 public:
 
