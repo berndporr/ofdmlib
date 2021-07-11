@@ -19,22 +19,52 @@
 
 // Encoding Related Functions //
 
+/**
+* Encodes one OFDM Symbol
+* 
+* @param data pointer to input data array
+*
+* @return 0 On Success, else error number.
+*
+* @todo: Modify this so all data types can be handled not just the dobule.
+*        Update for each new feature.
+*/
+int OFDMCodec::Encode(double *inputData)
+{
+    // QAM Encode data block
+    QAMModulatorPlaceholder(inputData);
+    // Transform data and put into the 
+    m_fft.ComputeTransform();
+    // Run band pass modulator
+    m_bandPass.Modulate();
+    // Add cyclic prefix
+    //AddCyclicPrefix(outputData, m_Settings.nPoints*2 , m_Settings.cyclicPrefixSize);
+    return 0;
+}
+
 
 /**
 * Encodes one OFDM Symbol
 * 
-* @param data pointer to input float data array
+* @param data pointer to input data array
+*
+* @param data pointer to input data array
 *
 * @return 0 On Success, else error number.
 *
-* @todo: Modify this so all data types can be handled not just the float.
+* @todo: Modify this so all data types can be handled not just the dobule.
 *        Update for each new feature.
 */
-int OFDMCodec::Encode(float *data)
+int OFDMCodec::Encode(double *inputData, double *outputData)
 {
-    QAMModulatorPlaceholder(data);
-    m_fft.ComputeTransform();
-    m_bandPass.Modulate();
+    // QAM Encode data block
+    QAMModulatorPlaceholder(inputData);
+    // Transform data and put into the 
+    m_fft.ComputeTransform( (fftw_complex *) &outputData[m_Settings.cyclicPrefixSize]);
+    // Run band pass modulator
+    m_bandPass.Modulate(&outputData[m_Settings.cyclicPrefixSize]);
+    // Add cyclic prefix
+    AddCyclicPrefix(outputData, m_Settings.nPoints*2 , m_Settings.cyclicPrefixSize);
     return 0;
 }
 
@@ -49,9 +79,9 @@ int OFDMCodec::Encode(float *data)
 *
 * @todo: This needs to be implemented for release v0.5
 */
-int OFDMCodec::QAMModulatorPlaceholder(float *data)
+int OFDMCodec::QAMModulatorPlaceholder(double *data)
 {
-    // Generate random floats 
+    // Copy Data
     for(uint16_t i = 0; i < m_Settings.nPoints; i++)
     {
         m_fft.in[i][0] = data[(i*2)];
@@ -73,7 +103,16 @@ int OFDMCodec::QAMModulatorPlaceholder(float *data)
 */
 int OFDMCodec::Decode()
 {
-    m_bandPass.Demodulate();
+    uint32_t symbolStart = 0;
+    int maxCorrelation = 0;
+    maxCorrelation = m_correlator.FindSymbolStart();
+    // if (maxCorrelationIndex >= 0)
+    symbolStart = maxCorrelation +  m_Settings.cyclicPrefixSize;
+    printf("OFDMCodec::Decode() maxCorrelation = %d\n", maxCorrelation);
+    printf("OFDMCodec::Decode() symbolStart = %d\n", symbolStart);
+    // Run Data thrgough bandpass demodulator
+    m_bandPass.Demodulate(symbolStart);
+    // Compute FFT & Normalise
     m_fft.ComputeTransform();
     m_fft.Normalise();
     return 0;
@@ -81,8 +120,8 @@ int OFDMCodec::Decode()
 
 
 /**
-* A place holder function for QAM Modulator 
-* It just copies over the data from one aray into fft object input
+* A place holder function for QAM demodulator 
+* It just copies over the data from the FFT object output to specified destination
 * 
 * @param data pointer to float data array
 *
@@ -92,12 +131,11 @@ int OFDMCodec::Decode()
 */
 int OFDMCodec::QAMDemodulatorPlaceholder(double *data)
 {
-    // Generate random floats 
-    for(uint16_t i = 0; i < m_Settings.nPoints; i++)
+    for(uint32_t i = 0; i < m_Settings.nPoints; i++)
     {
         data[(i*2)] = m_fft.out[i][0];
         data[(i*2)+1] = m_fft.out[i][1];
-    }
+    }  
     return 0;
 }
 
@@ -109,18 +147,14 @@ int OFDMCodec::QAMDemodulatorPlaceholder(double *data)
 /**
 * Update energy dispersal seed
 * 
-* @param type integer for pseudo number generator (uint16_t)
-* @param nPoints integer for pseudo number generator (uint16_t)
-* @param complexTimeSeries integer for pseudo number generator (uint16_t)
-* @param pilotToneStep integer for pseudo number generator (uint16_t)
-* @param pilotToneAmplitude integer for pseudo number generator (uint16_t)
-* @param qamSize integer for pseudo number generator (uint16_t)
-* @param buffer integer for pseudo number generator (uint16_t)
+* @param OFDMSettings integer for pseudo number generator (uint16_t)
+*
+* @param buffer pointer to the modulator buffer.
 *
 * @return 0 On Success, else error number.
 *
 */
-int  OFDMCodec::Configure(OFDMSettings settingsStruct, double *buffer)
+int  OFDMCodec::Configure(OFDMSettings settingsStruct, double *buffer, uint32_t bufferSize)
 {
     m_Settings = settingsStruct;
     m_fft.Configure(settingsStruct.nPoints, settingsStruct.type);
@@ -132,8 +166,10 @@ int  OFDMCodec::Configure(OFDMSettings settingsStruct, double *buffer)
 
     if(settingsStruct.type == FFTW_FORWARD)
     {
+        m_correlator.Configure(settingsStruct.nPoints, settingsStruct.cyclicPrefixSize, buffer, bufferSize);
         m_bandPass.Configure(settingsStruct.nPoints, m_fft.in, buffer);
     } 
+
     return OK;
 }
 

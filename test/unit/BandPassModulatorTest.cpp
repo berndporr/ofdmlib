@@ -55,12 +55,16 @@ BOOST_AUTO_TEST_CASE(ModToDemod)
 
     for (uint16_t i = 0; i < nPoints; i++)
     {
-        modulatorInput[i][0] = (float) rand()/RAND_MAX;
-        modulatorInput[i][1] = (float) rand()/RAND_MAX;
+        modulatorInput[i][0] = (double) rand()/RAND_MAX;
+        modulatorInput[i][1] = (double) rand()/RAND_MAX;
     }
 
+    double rxSignal[(nPoints*2)*10];
+    uint32_t symbolStart = rand() % (nPoints*2)*9;
+    printf("Random Symbol Start = %d\n",symbolStart);
+
     BandPassModulator modulator(nPoints,  modulatorInput, modulatorOutput);
-    BandPassModulator demodulator(nPoints, demodulatorOutput, modulatorOutput);
+    BandPassModulator demodulator(nPoints, demodulatorOutput, rxSignal);
 
     // Measure wall time of the ifft execution.
     auto start = std::chrono::steady_clock::now();
@@ -73,9 +77,11 @@ BOOST_AUTO_TEST_CASE(ModToDemod)
 
     printf("\nDemodulator:\n");
 
+    memcpy(&rxSignal[symbolStart], modulatorOutput, (sizeof(double)*(nPoints*2)) );
+
     // Measure wall time of the fft execution.
     start = std::chrono::steady_clock::now();
-    demodulator.Demodulate();
+    demodulator.Demodulate(symbolStart);
     end = std::chrono::steady_clock::now();
  
     std::cout << "Digital quadrature demodulator elapsed time: "

@@ -12,8 +12,8 @@ add_definitions (-DBOOST_TEST_DYN_LINK)
 
 # Unit Tests
 add_executable (FourierTransformsTest unit/FourierTransformsTest.cpp)
-add_executable (BandPassModulatorTest unit/BandPassModulatorTest.cpp)
-
+add_executable (BandPassModulatorTest unit/BandPassModulatorTest.cpp)  
+add_executable (CyclicPrefixTest unit/CyclicPrefixTest.cpp) 
 
 # Integration Tests
 add_executable (IntegrationTest integration/IntegrationTests.cpp)
@@ -36,6 +36,17 @@ target_link_libraries (BandPassModulatorTest
                       ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
 )
 
+find_package(Boost 1.40.0 COMPONENTS filesystem system iostreams REQUIRED)
+
+target_link_libraries (CyclicPrefixTest
+                      ofdmlib
+                      fftw3
+                      ${Boost_FILESYSTEM_LIBRARY}
+                      ${Boost_SYSTEM_LIBRARY}
+                      ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+                      ${Boost_LIBRARIES}
+)
+
 
 # Link libraries to integration tests
 target_link_libraries (IntegrationTest
@@ -50,6 +61,7 @@ target_link_libraries (IntegrationTest
 # Add unit tests
 add_test (NAME Fourier_Transforms_Test COMMAND FourierTransformsTest)
 add_test (NAME Band_Pass_Modulator_Test COMMAND BandPassModulatorTest)
+add_test (NAME Cyclic_Prefix_Test COMMAND CyclicPrefixTest)
 
 
 # Add integration tests

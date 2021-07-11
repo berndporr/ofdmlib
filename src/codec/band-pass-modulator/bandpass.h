@@ -67,7 +67,8 @@ public:
 	int Configure(uint16_t fftPoints, fftw_complex *pComplex, double *pDouble);
 	int Close();
 	int Modulate();
-	int Demodulate();
+	int Modulate(double *pDouble);
+	int Demodulate(uint32_t offset);
 
 private:
 

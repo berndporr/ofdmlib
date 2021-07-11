@@ -6,7 +6,7 @@
 option(BUILD_DOC "Build documentation" ON)
 
 # Check if Doxygen is installed
-find_package(Doxygen)
+find_package(Doxygen) # // This gave an error when repo was cloned on another machine https://gitlab.kitware.com/cmake/cmake/-/issues/18708
 # If it is
 if (DOXYGEN_FOUND)
     # Set I/O files
