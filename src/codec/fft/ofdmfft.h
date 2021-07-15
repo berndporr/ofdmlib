@@ -16,6 +16,8 @@
 #include <math.h>
 #include <fftw3.h>
 
+#include "common.h"
+
 
 /**
  * @brief Fourier and Inverse Fourier transform object class
@@ -44,9 +46,9 @@ public:
 	* @return -
 	*
 	*/
-	ofdmFFT(size_t nPoints, int type)
+	ofdmFFT(size_t nPoints, int type, uint32_t pilotStep)
 	{
-		Configure(nPoints, type);
+		Configure(nPoints, type, pilotStep);
 	}
 
 	/**
@@ -60,11 +62,12 @@ public:
 		Close();
 	}
 
-	int Configure(uint16_t nPoints, int type);
+	int Configure(uint16_t nPoints, int type, uint32_t pilotStep);
 	int Normalise();
 	int Close();
 	int ComputeTransform();
 	int ComputeTransform(fftw_complex *dest);
+	double GetImagSum();
 
 public:
 
@@ -73,9 +76,10 @@ public:
 
 private:
 
-	uint16_t nFFTPoints = 0;
-	int configured = 0;
-    fftw_plan fftplan; /// FFT plan 
+	uint16_t m_nFFT = 0;
+	uint32_t m_pilotToneStep = 0;
+	int m_configured = 0;
+    fftw_plan m_fftplan; /// FFT plan 
 
 };
 

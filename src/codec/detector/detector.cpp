@@ -1,11 +1,12 @@
 /**
-* @file cyclicprefix.cpp
+* @file detector.cpp
 * @author Kamil Rog
 *
 * @todo: DEAL WITH WRAPAROUND FOR INCOMING BLOCKS OF DATA
 */
 
-#include "cyclicprefix.h"
+#include "detector.h"
+#include <cstddef>
 
 
 /**
@@ -18,37 +19,39 @@
 * @return 0 on success, else error number
 *
 */
-int Correlator::Configure(uint16_t fftPoints, uint16_t prefixSize, double *pDouble, uint32_t buffSize)
+int Detector::Configure(uint32_t fftPoints, uint32_t prefixSize, ofdmFFT *fft, NyquistModulator* nyquist)
 {   
     // Set variables
     nPrefix = prefixSize;
-    input = pDouble;
+    //input = pDouble;
     symbolSize = fftPoints*2;
     threshold = 0.8;
-    bufferSize = buffSize;
     configured = 1;
+    m_SearchRange = 25;
+    pFFT = fft;
+	pNyquistModulator = nyquist;
     return 0;
 }
 
 /**
 * Computes correlation in time domain.
-* This is done by accumulating the product of the flipped
-* prefix and the expected end of the signal across the expected
-* prefix lengths. 
+* This is done by accumulating the product of the prefix
+* and the end of the expected symbol location across the expected
+* prefix location. 
 * 
-* @param Offset is the start of the prefix
+* @param prefixOffset An index of the start of the prefix
 * 
-* @return correlation number.
+* @return correlation result
 *
 */
-double Correlator::ExecuteCorrelator(uint32_t prefixOffset)
+double Detector::ExecuteCorrelator(const DoubleVec &input, size_t prefixOffset)
 {
     // Initialize output variable
     double correlation = 0;
     // Set new prefix start to the symbol's end
-    uint32_t signalIndex = prefixOffset + symbolSize; 
+    size_t signalIndex = prefixOffset + symbolSize; 
     // For each sample length of the prefix
-    for(int i = prefixOffset; i < nPrefix+prefixOffset; i++)
+    for(size_t i = prefixOffset; i < nPrefix+prefixOffset; i++)
     {
         // Multiply the signal with delayed version of itself
         correlation += input[i] * input[signalIndex];
@@ -70,23 +73,73 @@ double Correlator::ExecuteCorrelator(uint32_t prefixOffset)
 * @return symbol start(integer) index.
 *
 */
-int Correlator::FindSymbolStart()
+size_t Detector::FindSymbolStart(const DoubleVec &input)
 {   
-    uint32_t CoarseStart = 0;
-    uint32_t FineStart = 0;
-    uint32_t symbolStart = -1;
+    size_t coarseStart = 0;
+    size_t symbolStart = 0;
 
     // Coarse search
-    CoarseStart = CoarseSearch();
+    coarseStart = CoarseSearch(input);
+    coarseStart += nPrefix;
 
-    if(CoarseStart >= 0)
+    if(coarseStart >= 0)
     {
         // Pilot Tone Search
-        //  symbolStart = PilotToneSearch();
-        symbolStart = CoarseStart;
+        symbolStart = FineSearch(input, coarseStart);
+        //symbolStart = CoarseStart;
     }
     // Return Symbol start
     return symbolStart;
+}
+
+
+/**
+* Searches for the symbol start by assessing the 
+* value of the imaginary part of the pilot tones
+* locations.
+* 
+* @param coarseStart start of the symbol found by coarse search
+*
+* @return fine symbol start index, else -1
+*
+*/
+size_t Detector::FineSearch(const DoubleVec &buff, size_t coarseStart)
+{
+    double min = 100000;
+    double sumOfImag = 0.0;
+    int lowestImgIndex = 0;
+
+    size_t startIndex = 0;
+    // Restric start index of fine search to 0th element
+    if( startIndex >= 0)
+    {
+        startIndex = coarseStart - (int)((m_SearchRange-1) / 2);
+    }
+    else
+    {
+        startIndex = 0;
+    }
+
+    // TODO: Handle an exception where the stop index is outside the boundaries 
+    size_t stopIndex = coarseStart + (int)((m_SearchRange-1) / 2); 
+
+    for(size_t i = startIndex; i < stopIndex; i++)
+    {
+        // Demodulate
+        pNyquistModulator->Demodulate(buff, i);
+        // Compute FFT
+        pFFT->ComputeTransform();
+        // Normalise
+        pFFT->Normalise();
+        // SUM imag parts
+        sumOfImag = abs(pFFT->GetImagSum());
+        if( sumOfImag < min )
+        {
+            min = sumOfImag;
+            lowestImgIndex = i;
+        }
+    }
+    return lowestImgIndex;
 }
 
 
@@ -97,7 +150,7 @@ int Correlator::FindSymbolStart()
 * @return symbol start(integer) index, else -1
 *
 */
-int Correlator::CoarseSearch()
+size_t Detector::CoarseSearch(const DoubleVec &input)
 {
     bool startNotFound = true;
     double correlation = 0;
@@ -110,7 +163,7 @@ int Correlator::CoarseSearch()
     while(startNotFound) // Maybe set maximum itterations?
     {
         // Calculate correlation for a given offset
-        correlation = ExecuteCorrelator(startOffset);
+        correlation = ExecuteCorrelator(input, startOffset);
         // If the correlation exceeds the threshold
         if(correlation >= threshold)
         {
@@ -134,7 +187,6 @@ int Correlator::CoarseSearch()
             startNotFound = false;
             // return the index at which the max value has occured
             // This is most likley the max correlation point for the first symbol in the RxSignal
-            printf("Correlator::CoarseSearch() maxValue = %f\n", maxValue);
             return maxValueIndex;
         }
 
@@ -155,14 +207,10 @@ int Correlator::CoarseSearch()
 * @return 0 on success, else error number
 *
 */    
-int Correlator::Close()
+int Detector::Close()
 {   
     nPrefix = 0;
-    input = nullptr;
     symbolSize = 0;
-    bufferSize = 0;
     configured = 0;
     return 0;
 }
-
-

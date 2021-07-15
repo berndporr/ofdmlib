@@ -21,13 +21,15 @@
 #include <time.h>
 
 // For object under test
-#include "cyclicprefix.h"
+#include "detector.h"
+#include "common.h"
+#include "fftw3.h"
 
 /**
-* Test BANDPASS MODULATOR
+* Test NYQUIST MODULATOR
 * 
 */
-BOOST_AUTO_TEST_SUITE(CYCLIC_PREFIX)
+BOOST_AUTO_TEST_SUITE(DetectorTest)
 
 
 /**
@@ -37,44 +39,50 @@ BOOST_AUTO_TEST_CASE(CorrelatorTest)
 {
     printf("\nTesting Correlator...\n");
 
-    uint16_t nPoints = 512;
+    uint32_t nPoints = 512;
     uint32_t symbolSize = nPoints*2;
     uint32_t prefixSize = (int) (symbolSize / 8);
     uint32_t symbolSizeWithPrefx = symbolSize + prefixSize;
+    uint32_t pilotToneStep = 16;
+    int type = FFTW_FORWARD;
 
     // Setup random float generator
     srand( (unsigned)time( NULL ) );
 
-    double modulatorOutput[symbolSizeWithPrefx];
+    //double modulatorOutput[symbolSizeWithPrefx];
+    DoubleVec modulatorOutput;
+    modulatorOutput.resize(symbolSizeWithPrefx);
 
     // Create rx signal array to capable of holding 20 upsampled symbols with prefix
     uint32_t rxSignalSize = (symbolSizeWithPrefx * 10);
     uint32_t rxLastAllowedIndex = (symbolSizeWithPrefx * 9);
-    double rxSignal[rxSignalSize];
-    double corellatorOutput[rxSignalSize];
-    
-    Correlator correlator(nPoints, prefixSize, rxSignal, rxSignalSize);
 
-    // Populate all Rx signal with random values
-    /*
-    for (uint16_t i = 0; i < rxSignalSize; i++)
-    {
-        rxSignal[i] = (float) rand()/RAND_MAX;
-    }
-    */
+    DoubleVec rxSignal;
+    rxSignal.resize(rxSignalSize);
+
+    DoubleVec dummyModulatorOutput;
+    dummyModulatorOutput.resize(symbolSizeWithPrefx);
+
+
+    DoubleVec corellatorOutput;
+    corellatorOutput.resize(rxSignalSize);
+
+    ofdmFFT fft(nPoints, type, pilotToneStep);
+    NyquistModulator nyquistModulator(nPoints, ( type == -1 ) ?  fft.out : fft.in);    
+    Detector detector(nPoints, prefixSize, &fft, &nyquistModulator);
 
     // Generate random index value for symbol start
     uint32_t symbolStart = rand() % rxLastAllowedIndex;
-    printf("Random Symbol Start = %d\n",symbolStart);
+    printf("Randomly Generated Symbol Start = %d\n",symbolStart);
 
     // Simulate modulator output
     for (uint32_t i = prefixSize; i < symbolSizeWithPrefx; i++)
     {
-        modulatorOutput[i] = (float) rand()/RAND_MAX;
+        modulatorOutput[i] = (double) rand()/RAND_MAX;
     }
 
     // Create Cyclic Prefix
-    AddCyclicPrefix(&modulatorOutput[0], symbolSize, prefixSize);
+    AddCyclicPrefix(modulatorOutput, symbolSize, prefixSize);
     // Check Prefix Has been added correctly
     for(uint32_t i = 0 ; i < prefixSize; i++)
     {
@@ -87,7 +95,9 @@ BOOST_AUTO_TEST_CASE(CorrelatorTest)
     }
 
     // Copy the symbol with prefix to Rx signal array
-    memcpy( &rxSignal[symbolStart], &modulatorOutput[0], (sizeof(double)*symbolSizeWithPrefx));
+    //memcpy( &rxSignal[symbolStart], &modulatorOutput[0], (sizeof(double)*symbolSizeWithPrefx));
+    std::copy(modulatorOutput.begin(), modulatorOutput.begin()+symbolSizeWithPrefx, rxSignal.begin()+symbolStart);
+
     // Check if the symbol with prefix has been copied correctly
     for(uint32_t i = 0 ; i < symbolSizeWithPrefx ; i++)
     {
@@ -97,11 +107,10 @@ BOOST_AUTO_TEST_CASE(CorrelatorTest)
         }
     }
 
-    // Error occured at Random Symbol Start = 16077
     auto start = std::chrono::steady_clock::now();
     for(uint32_t i = 0; i < rxLastAllowedIndex; i++)
     {
-        corellatorOutput[i] = correlator.ExecuteCorrelator(i);
+        corellatorOutput[i] = detector.ExecuteCorrelator(rxSignal, i);
     }
     auto end = std::chrono::steady_clock::now();
 
@@ -139,7 +148,7 @@ BOOST_AUTO_TEST_CASE(CorrelatorTest)
     uint32_t peakIndex = 0;
     double max = 0.0;
     start = std::chrono::steady_clock::now();
-    for (uint32_t i = 0; i < rxSignalSize; i++)
+    for (uint32_t i = 0; i < corellatorOutput.size(); i++)
     {
         if(corellatorOutput[i] > max)
         {
@@ -155,7 +164,7 @@ BOOST_AUTO_TEST_CASE(CorrelatorTest)
 
     // Check if the correlator max output is where the symbol was inserted
     BOOST_CHECK_MESSAGE( (peakIndex == symbolStart), 
-    "Symbol start has not been detected correctly, The peak occurs at index: " << peakIndex );  
+    "Symbol start has not been detected correctly, The max correlation occurs at index =  " << peakIndex );  
         
 }
 
@@ -163,31 +172,34 @@ BOOST_AUTO_TEST_CASE(CorrelatorTest)
 BOOST_AUTO_TEST_CASE(CoarseSearchTest)
 {
     printf("\nTesting Coarse Search...\n");
-    uint16_t nPoints = 512;
+
+    uint32_t nPoints = 512;
     uint32_t symbolSize = nPoints*2;
     uint32_t prefixSize = (int) (symbolSize / 8);
     uint32_t symbolSizeWithPrefx = symbolSize + prefixSize;
+    uint32_t pilotToneStep = 16;
+    int type = FFTW_FORWARD;
 
     // Setup random float generator
     srand( (unsigned)time( NULL ) );
 
-    double modulatorOutput[symbolSizeWithPrefx];
+    //double modulatorOutput[symbolSizeWithPrefx];
+    DoubleVec modulatorOutput;
+    modulatorOutput.resize(symbolSizeWithPrefx);
 
     // Create rx signal array to capable of holding 20 upsampled symbols with prefix
     uint32_t rxSignalSize = (symbolSizeWithPrefx * 10);
     uint32_t rxLastAllowedIndex = (symbolSizeWithPrefx * 9);
-    double rxSignal1[rxSignalSize] = {0};
-    double corellatorOutput[rxSignalSize];
-    
-    Correlator correlator(nPoints, prefixSize, rxSignal1, rxSignalSize);
 
-    // Populate all Rx signal with random values
-    /*
-    for (uint16_t i = 0; i < rxSignalSize; i++)
-    {
-        rxSignal1[i] = (float) rand()/RAND_MAX;
-    }
-    */
+    DoubleVec rxSignal;
+    rxSignal.resize(rxSignalSize);
+
+    DoubleVec dummyModulatorOutput;
+    dummyModulatorOutput.resize(symbolSizeWithPrefx);
+
+    ofdmFFT fft(nPoints, type, pilotToneStep);
+    NyquistModulator nyquistModulator(nPoints, ( type == -1 ) ?  fft.out : fft.in);    
+    Detector detector(nPoints, prefixSize, &fft, &nyquistModulator);
 
     // Generate random index value for symbol start
     uint32_t symbolStart = rand() % rxLastAllowedIndex;
@@ -196,16 +208,14 @@ BOOST_AUTO_TEST_CASE(CoarseSearchTest)
     // Simulate modulator output
     for (uint32_t i = prefixSize; i < symbolSizeWithPrefx; i++)
     {
-        modulatorOutput[i] = (float) rand()/RAND_MAX;
+        modulatorOutput[i] = (double) rand()/RAND_MAX;
     }
 
     // Create Cyclic Prefix
-    AddCyclicPrefix(&modulatorOutput[0], symbolSize, prefixSize);
+    AddCyclicPrefix( modulatorOutput, symbolSize, prefixSize);
     // Check Prefix Has been added correctly
     for(uint32_t i = 0 ; i < prefixSize; i++)
     {
-        //modulatorOutput[i] = modulatorOutput[symbolSize+i];
-
         if(modulatorOutput[i] != modulatorOutput[symbolSize + i])
         {
             printf("Missmatch symbolwithprefix[%d]  = %f, modulatorOutput[%d] = %f \n" , i , modulatorOutput[i], (symbolSize + i) , modulatorOutput[(symbolSize + i)]);
@@ -213,19 +223,21 @@ BOOST_AUTO_TEST_CASE(CoarseSearchTest)
     }
 
     // Copy the symbol with prefix to Rx signal array
-    memcpy( &rxSignal1[symbolStart], &modulatorOutput[0], (sizeof(double)*symbolSizeWithPrefx));
+    //memcpy( &rxSignal[symbolStart], &modulatorOutput[0], (sizeof(double)*symbolSizeWithPrefx));
+    std::copy(modulatorOutput.begin(), modulatorOutput.begin()+symbolSizeWithPrefx, rxSignal.begin()+symbolStart);
+    //std::copy()
     // Check if the symbol with prefix has been copied correctly
     for(uint32_t i = 0 ; i < symbolSizeWithPrefx ; i++)
     {
-        if(rxSignal1[symbolStart+i] != modulatorOutput[i])
+        if(rxSignal[symbolStart+i] != modulatorOutput[i])
         {
-            printf("Missmatch rxSignal1[%d]  = %f, symbolwithprefix[%d] = %f \n" , symbolStart+i , rxSignal1[symbolStart+i], i , modulatorOutput[i]);
+            printf("Missmatch rxSignal[%d]  = %f, symbolwithprefix[%d] = %f \n" , symbolStart+i , rxSignal[symbolStart+i], i , modulatorOutput[i]);
         }
     }
 
     uint32_t correlatorCoarseSearchIndex = 0;
     auto start = std::chrono::steady_clock::now();
-        correlatorCoarseSearchIndex = correlator.CoarseSearch();
+        correlatorCoarseSearchIndex = detector.CoarseSearch(rxSignal);
     auto end = std::chrono::steady_clock::now();
 
     std::cout << "Coarse Search elapsed time: "

@@ -45,9 +45,10 @@ BOOST_AUTO_TEST_CASE(IFFTtoFFT)
     srand( (unsigned)time( NULL ) );
 
     uint16_t nPoints = 512;
+    uint16_t pilotToneStep = 16;
 
-    ofdmFFT ifft(nPoints, FFTW_BACKWARD);
-    ofdmFFT fft(nPoints, FFTW_FORWARD);
+    ofdmFFT ifft(nPoints, FFTW_BACKWARD, pilotToneStep);
+    ofdmFFT fft(nPoints, FFTW_FORWARD, pilotToneStep);
 
     // Generate random floats 
     for (uint16_t i = 0; i < nPoints; i++)
@@ -133,8 +134,10 @@ BOOST_AUTO_TEST_CASE(IFFTtoFFTCosine)
 
     // Initialize fft object of size 512
     uint16_t nPoints = 512;
-    ofdmFFT ifft(nPoints, FFTW_BACKWARD);
-    ofdmFFT fft(nPoints, FFTW_FORWARD);
+    uint16_t pilotToneStep = 16;
+
+    ofdmFFT ifft(nPoints, FFTW_BACKWARD, pilotToneStep);
+    ofdmFFT fft(nPoints, FFTW_FORWARD, pilotToneStep);
 
     for(uint16_t j = 0; j < nPoints; j++)
     {
@@ -237,9 +240,10 @@ BOOST_AUTO_TEST_CASE(FFTtoIFFT)
     srand( (unsigned)time( NULL ) );
 
     uint16_t nPoints = 512;
+    uint16_t pilotToneStep = 16;
 
-    ofdmFFT forwardfft(nPoints, FFTW_FORWARD);
-    ofdmFFT backwardfft(nPoints, FFTW_BACKWARD);
+    ofdmFFT forwardfft(nPoints, FFTW_FORWARD, pilotToneStep);
+    ofdmFFT backwardfft(nPoints, FFTW_BACKWARD, pilotToneStep);
 
     // Generate random floats 
     for (uint16_t i = 0; i < nPoints; i++)
@@ -323,8 +327,10 @@ BOOST_AUTO_TEST_CASE(FFTtoIFFTCosine)
 
     // Initialize fft object of size 512
     uint16_t nPoints = 512;
-    ofdmFFT forwardfft(nPoints, FFTW_FORWARD);
-    ofdmFFT backwardfft(nPoints, FFTW_BACKWARD);
+    uint16_t pilotToneStep = 16;
+
+    ofdmFFT forwardfft(nPoints, FFTW_FORWARD, pilotToneStep);
+    ofdmFFT backwardfft(nPoints, FFTW_BACKWARD, pilotToneStep);
 
     for(uint16_t j = 0; j < nPoints; j++)
     {
@@ -434,9 +440,10 @@ BOOST_AUTO_TEST_CASE(Reconfiguration)
 
     // Initialize fft object with size of 1 
     uint16_t nPoints = 1;
-    ofdmFFT forwardfft(nPoints, FFTW_FORWARD);
-    ofdmFFT backwardfft(nPoints, FFTW_BACKWARD);
-
+    uint16_t pilotToneStep = 16;
+    ofdmFFT forwardfft(nPoints, FFTW_FORWARD, pilotToneStep);
+    ofdmFFT backwardfft(nPoints, FFTW_BACKWARD, pilotToneStep);
+    
     int PowOf2Arr[] = { 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384 };
     int nTestSizes = sizeof(PowOf2Arr) / sizeof(PowOf2Arr[0]);
 
@@ -444,8 +451,8 @@ BOOST_AUTO_TEST_CASE(Reconfiguration)
     for(uint16_t j = 0; j < nTestSizes; j++)
     {
         printf("\nTesting %d Point FFT\n",PowOf2Arr[j]);
-        forwardfft.Configure(PowOf2Arr[j], FFTW_FORWARD);
-        backwardfft.Configure(PowOf2Arr[j], FFTW_BACKWARD);
+        forwardfft.Configure(PowOf2Arr[j], FFTW_FORWARD,pilotToneStep);
+        backwardfft.Configure(PowOf2Arr[j], FFTW_BACKWARD, pilotToneStep);
         // Generate random floats 
 
         for (uint16_t i = 0; i < PowOf2Arr[j]; i++)

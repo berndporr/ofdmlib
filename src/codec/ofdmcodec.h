@@ -17,16 +17,15 @@
 #include <math.h>
 #include <fftw3.h>
 
-#include "ofdmfft.h"
-#include "bandpass.h"
-#include "cyclicprefix.h"
-
+// Ofdmlib objects
+#include "detector.h"
+#include "common.h"
 
 struct OFDMSettings
 {
     int type;
-	bool complexTimeSeries = false; // Complexity
-    uint16_t EnergyDispersalSeed;
+	bool complexTimeSeries; // Complexity
+    uint16_t EnergyDispersalSeed; 
     uint16_t nPoints; // Total number of FFT & IFFT coefficients 
 	uint16_t pilotToneStep; // Pilot Tones
     float    pilotToneAmplitude; // Pilot Tones
@@ -60,49 +59,37 @@ class OFDMCodec {
 
 public: 
 
-	OFDMCodec(OFDMSettings settingsStruct, double *buffer, uint32_t bufferSize)
+	OFDMCodec(OFDMSettings settingsStruct) :
+        m_fft(settingsStruct.nPoints, settingsStruct.type, settingsStruct.pilotToneStep),
+        m_Settings(settingsStruct),
+        m_NyquistModulator(settingsStruct.nPoints, ( settingsStruct.type == +1 ) ?  m_fft.out : m_fft.in),
+        m_detector(settingsStruct.nPoints, settingsStruct.cyclicPrefixSize, &m_fft, &m_NyquistModulator)
     {
-        Configure(settingsStruct, buffer, bufferSize);
+
 	}
 
+    /**
+	* Destructor 
+	*
+	*/
+	~OFDMCodec()
+	{
+
+	}
+
+
     // Encoding Related Functions
-    int Encode(double *inputData);
-    int Encode(double *inputData, double *outputData);
+    DoubleVec Encode(const DoubleVec& inputData);
 
-    int Configure(OFDMSettings settingsStruct, double *buffer, uint32_t bufferSize);
+    //int Configure(OFDMSettings settingsStruct, DoubleVec &buffer);
 
-    int QAMModulatorPlaceholder(double *data);
-    int QAMDemodulatorPlaceholder(double *data);
+    int QAMModulatorPlaceholder(const DoubleVec &data);
+    int QAMDemodulatorPlaceholder(DoubleVec &data);
 
     // Decode
-    int Decode();
+    DoubleVec Decode(const DoubleVec &rxOutput);
 
-    // Get & Set Functions for the settings variables
-    uint16_t SetEnergyDispersalSeed(uint16_t seed);
-    uint16_t GetEnergyDispersalSeed();
-    
-    uint16_t SetCodecType(int type);
-    int GetCodecType();
-
-    uint16_t SetnPoints(uint16_t newNPoints);
-    uint16_t GetnPoints();
-
-    uint16_t SetTimeComplexity(bool newComplexity);
-    bool GetTimeComplexity();
-
-    uint16_t GetPilotTonesIndicies(); // This should probably return an array of the pilotTones
-    uint16_t GetPilotToneStep();
-    uint16_t SetPilotTones(uint16_t newPilotToneStep);
-    uint16_t SetPilotTones(uint16_t newPilotToneVector[], uint16_t nPilots); // nPilots might not be needed.
-
-    uint16_t GetPilotTonesAmplitude();
-    uint16_t SetPilotTonesAmplitude(float newPilotToneStep);
-
-    uint16_t GetQAMSize();
-    uint16_t SetQAMSize(uint16_t newQAMSize);
-
-    uint16_t GetCyclicPrefixSize();
-    uint16_t SetCyclicPrefixSize(uint16_t newCyclicPrefixSize);
+    const OFDMSettings & GetSettings() const;
 
     // Objects
 	ofdmFFT m_fft; // TODO: In future releases this can possibly made private
@@ -110,10 +97,14 @@ public:
 private:
     // Settings
     OFDMSettings m_Settings;
-    BandPassModulator m_bandPass;
-    Correlator m_correlator;
-    
+    NyquistModulator m_NyquistModulator;
+    Detector m_detector;
 
 };
+
+ inline const OFDMSettings & OFDMCodec::GetSettings() const
+ {
+     return m_Settings;
+ }
 
 #endif
