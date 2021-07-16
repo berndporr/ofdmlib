@@ -18,12 +18,12 @@
 * @return 0 on success, else error number
 *
 */
-int NyquistModulator::Configure(uint16_t fftPoints, fftw_complex *pComplex)
+int NyquistModulator::Configure(size_t fftPoints, fftw_complex *pComplex)
 {   
     // Set variables
-    nPoints = fftPoints;
-    complexBuffer = pComplex;
-    configured = 1;
+    m_nPoints = fftPoints;
+    pComplexBuffer = pComplex;
+    m_configured = 1;
     return 0;
 }
 
@@ -36,9 +36,9 @@ int NyquistModulator::Configure(uint16_t fftPoints, fftw_complex *pComplex)
 */    
 int NyquistModulator::Close()
 {   
-    nPoints = 0;
-    configured = 0;
-    complexBuffer = nullptr;
+    m_nPoints = 0;
+    m_configured = 0;
+    pComplexBuffer = nullptr;
     return 0;
 }
 
@@ -106,14 +106,14 @@ int NyquistModulator::Modulate(DoubleVec &vectorBuffer)
 * @return 0 on success, else error number
 * 
 */  
-void NyquistModulator::Modulate(DoubleVec &ifftOutput, uint32_t prefixSize)
+void NyquistModulator::Modulate(DoubleVec &ifftOutput, const size_t prefixSize)
 {
     // If the nPoints is even
-    if(nPoints % 2 == 0)
+    if( (m_nPoints % 2) == 0)
     {      
         // Initialize double buffer counter
         // For each every other real img pair skipping first fft point
-        for(size_t i = prefixSize+2; i < prefixSize+(nPoints*2); i+=4)
+        for(size_t i = prefixSize+2; i < prefixSize+(m_symbolSize); i+=4)
         {
             // Negate the value
             ifftOutput[i] = -ifftOutput[i];
@@ -127,7 +127,7 @@ void NyquistModulator::Modulate(DoubleVec &ifftOutput, uint32_t prefixSize)
         int s = 1;
         // Initialize double buffer counter
         size_t j = 0;
-        for(size_t i = 0; i < nPoints; i++) 
+        for(size_t i = 0; i < m_nPoints; i++) 
         {
             // Copy the real part of the sample and multiply by s factor
             ifftOutput[j]   = s * ifftOutput[j];
@@ -152,25 +152,25 @@ void NyquistModulator::Modulate(DoubleVec &ifftOutput, uint32_t prefixSize)
 * @return 0 on success, else error number
 *
 */   
-void NyquistModulator::Demodulate(const DoubleVec &vectorBuffer, uint32_t offset)
+void NyquistModulator::Demodulate(const DoubleVec &vectorBuffer, size_t offset)
 {
     // If the nPoints is even
-    if(nPoints % 2 == 0)
+    if(m_nPoints % 2 == 0)
     {
         // Initialize double buffer counter
         size_t j = offset;
         // For each expected FFT sample point
-        for (size_t i = 0; i < nPoints; i += 2)
+        for (size_t i = 0; i < m_nPoints; i += 2)
         {   
             // Copy first first sample's real and img respectivley
-            complexBuffer[i][0] = vectorBuffer[j];
+            pComplexBuffer[i][0] = vectorBuffer[j];
             j++;
-            complexBuffer[i][1] = vectorBuffer[j];
+            pComplexBuffer[i][1] = vectorBuffer[j];
             j++;
             // Copy and the minus real and img respectivley of next the sample
-            complexBuffer[i+1][0] = -vectorBuffer[j];
+            pComplexBuffer[i+1][0] = -vectorBuffer[j];
             j++;
-            complexBuffer[i+1][1] = -vectorBuffer[j];
+            pComplexBuffer[i+1][1] = -vectorBuffer[j];
             j++;
         }
     }
@@ -182,14 +182,14 @@ void NyquistModulator::Demodulate(const DoubleVec &vectorBuffer, uint32_t offset
         // Initialize double buffer counter
         size_t j = offset;
         // For each expected FFT sample point
-        for(size_t i = 0; i < nPoints; i++)
+        for(size_t i = 0; i < m_nPoints; i++)
         {
             // Copy the real part of the sample and multiply by s factor
-            complexBuffer[i][0] = s * vectorBuffer[j];
+            pComplexBuffer[i][0] = s * vectorBuffer[j];
             // Increment double buffer counter
             j++;
             // Copy the imag part of the sample and multiply by s factor
-            complexBuffer[i][1] = s * vectorBuffer[j];
+            pComplexBuffer[i][1] = s * vectorBuffer[j];
             // Increment double buffer counter
             j++;
             // Compute factor for next sample

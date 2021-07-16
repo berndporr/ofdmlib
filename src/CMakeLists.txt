@@ -26,6 +26,7 @@ set(INCLUDE_DIRS
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/fft
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/nyquist-modulator
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/detector
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/qam-modulator
 )
 
 # Set Source files

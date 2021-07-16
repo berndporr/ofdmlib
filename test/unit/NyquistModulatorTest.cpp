@@ -103,8 +103,8 @@ BOOST_AUTO_TEST_CASE(ModToDemod)
     for (size_t i = 0; i < nPoints; i++)
     {
                 
-        printf("Real Sample: %lu %+9.5f Input to Modulator vs. %+9.5f Output of Demodulator\n",
-        i, ifftOutput[(i*2)], demodulatorOutput[i][0]);
+        //printf("Real Sample: %lu %+9.5f Input to Modulator vs. %+9.5f Output of Demodulator\n",
+        //i, ifftOutput[(i*2)], demodulatorOutput[i][0]);
 
         // Check if real and complex element match within defined precision.
         BOOST_CHECK_MESSAGE( 
@@ -112,8 +112,8 @@ BOOST_AUTO_TEST_CASE(ModToDemod)
         "Values vary more than threshold! - Occured at index: " << i );  
         
 
-        printf("Imag Sample: %lu %+9.5f Input to Modulator vs. %+9.5f Output of Demodulator\n",
-        i, ifftOutput[(i*2)+1], demodulatorOutput[i][1]);
+        //printf("Imag Sample: %lu %+9.5f Input to Modulator vs. %+9.5f Output of Demodulator\n",
+        //i, ifftOutput[(i*2)+1], demodulatorOutput[i][1]);
 
         // Check if real and complex element match within defined precision.
         BOOST_CHECK_MESSAGE( 

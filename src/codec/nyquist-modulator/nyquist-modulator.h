@@ -44,9 +44,11 @@ public:
 	* @param pDouble pointer to double array
 	*
 	*/
-	NyquistModulator(uint32_t nPoints, fftw_complex *pComplex) :
-	nPoints(nPoints),
-	complexBuffer(pComplex)
+	NyquistModulator(const size_t nPoints, fftw_complex *pComplex) :
+	m_configured(0),
+	m_nPoints(nPoints),
+	m_symbolSize(m_nPoints*2),
+	pComplexBuffer(pComplex)
 	{
 		//Configure(nPoints, pComplex);
 	}
@@ -59,23 +61,24 @@ public:
 	*/
 	~NyquistModulator()
 	{
-		Close();
+		//Close();
 	}
 
-	int Configure(uint16_t fftPoints, fftw_complex *pComplex);
+	int Configure(size_t fftPoints, fftw_complex *pComplex);
 	int Close();
-	void Modulate(DoubleVec &ifftOutput, uint32_t prefixSize);
-	void Demodulate(const DoubleVec &vectorBuffer, uint32_t offset);
+	void Modulate(DoubleVec &ifftOutput, const size_t prefixSize);
+	void Demodulate(const DoubleVec &vectorBuffer, const size_t offset);
 
 private:
 
-	int configured = 0;
-	size_t nPoints;
+	int m_configured;
+	size_t m_nPoints;
+	size_t m_symbolSize;
 
 	/// Input buffer for the modulator / Output buffer for demodulator.
 	/// This must point to the Output of IFFT for modulator and the
 	/// input of FFT for demodulator.
-	fftw_complex *complexBuffer; 
+	fftw_complex *pComplexBuffer; 
 
 
 	/// Output buffer for the Demodulator / Input buffer for demodulator.

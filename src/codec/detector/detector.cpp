@@ -22,11 +22,10 @@
 int Detector::Configure(uint32_t fftPoints, uint32_t prefixSize, ofdmFFT *fft, NyquistModulator* nyquist)
 {   
     // Set variables
-    nPrefix = prefixSize;
-    //input = pDouble;
-    symbolSize = fftPoints*2;
-    threshold = 0.8;
-    configured = 1;
+    m_nPrefix = prefixSize;
+    m_symbolSize = fftPoints*2;
+    m_threshold = 0.8;
+    m_configured = 1;
     m_SearchRange = 25;
     pFFT = fft;
 	pNyquistModulator = nyquist;
@@ -49,9 +48,9 @@ double Detector::ExecuteCorrelator(const DoubleVec &input, size_t prefixOffset)
     // Initialize output variable
     double correlation = 0;
     // Set new prefix start to the symbol's end
-    size_t signalIndex = prefixOffset + symbolSize; 
+    size_t signalIndex = prefixOffset + m_symbolSize; 
     // For each sample length of the prefix
-    for(size_t i = prefixOffset; i < nPrefix+prefixOffset; i++)
+    for(size_t i = prefixOffset; i < m_nPrefix+prefixOffset; i++)
     {
         // Multiply the signal with delayed version of itself
         correlation += input[i] * input[signalIndex];
@@ -80,7 +79,7 @@ size_t Detector::FindSymbolStart(const DoubleVec &input)
 
     // Coarse search
     coarseStart = CoarseSearch(input);
-    coarseStart += nPrefix;
+    coarseStart += m_nPrefix;
 
     if(coarseStart >= 0)
     {
@@ -157,15 +156,15 @@ size_t Detector::CoarseSearch(const DoubleVec &input)
     bool thresholdExceeded = false;
 
     double maxValue = 0.0;
-    uint32_t maxValueIndex = 0;
+    size_t maxValueIndex = 0;
 
     // While the start of the symbol has not been found
     while(startNotFound) // Maybe set maximum itterations?
     {
         // Calculate correlation for a given offset
-        correlation = ExecuteCorrelator(input, startOffset);
+        correlation = ExecuteCorrelator(input, m_startOffset);
         // If the correlation exceeds the threshold
-        if(correlation >= threshold)
+        if(correlation >= m_threshold)
         {
             // Set the flag to true
             thresholdExceeded = true;
@@ -175,13 +174,13 @@ size_t Detector::CoarseSearch(const DoubleVec &input)
                 // Set the max value
                 maxValue = correlation;
                 // Set the index at which this occured
-                maxValueIndex = startOffset;
+                maxValueIndex = m_startOffset;
             }
 
         }
 
         // If the sample value falls below threshold, and it was previously exceeded
-        if((correlation <= threshold) && (thresholdExceeded  == true) )
+        if((correlation <= m_threshold) && (thresholdExceeded  == true) )
         {
             // Symbol start has been found
             startNotFound = false;
@@ -192,11 +191,12 @@ size_t Detector::CoarseSearch(const DoubleVec &input)
 
         // The coarse search for this offset value has not been sucessfull,
         // Increment offset
-        startOffset++;
+        m_startOffset++;
         // TODO: Need to add extra logic to tell the function when the whole buffer has been searched
 
     }
     // Whole buffer searched, no symbol has been detected
+    m_startOffset = 0;
     return -1;
 }
 
@@ -209,8 +209,8 @@ size_t Detector::CoarseSearch(const DoubleVec &input)
 */    
 int Detector::Close()
 {   
-    nPrefix = 0;
-    symbolSize = 0;
-    configured = 0;
+    m_nPrefix = 0;
+    m_symbolSize = 0;
+    m_configured = 0;
     return 0;
 }

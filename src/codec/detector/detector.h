@@ -63,11 +63,11 @@ public:
 	*
 	*/
 	Detector(uint32_t nPoints, uint32_t prefixSize, ofdmFFT *fft, NyquistModulator *nyquist) :
-			configured(0),
-			nPrefix(prefixSize),
-			threshold(30.0), // TODO: Calibration function which listens to the noise and sets this value
-			startOffset(0),
-			symbolSize(nPoints*2),
+			m_configured(0),
+			m_nPrefix(prefixSize),
+			m_threshold(30.0), // TODO: Calibration function which listens to the noise and sets this value
+			m_startOffset(0),
+			m_symbolSize(nPoints*2),
 			m_SearchRange(25),
 			pFFT(fft),
 			pNyquistModulator(nyquist)
@@ -95,11 +95,11 @@ public:
 
 private:
 
-	int configured = 0;
-	uint32_t nPrefix;
-	double threshold = 30.0; // TODO: Calibration function which listens to the noise and sets this value
-	uint32_t startOffset = 0;
-	uint32_t symbolSize;
+	int m_configured = 0;
+	uint32_t m_nPrefix;
+	double m_threshold = 30.0; // TODO: Calibration function which listens to the noise and sets this value
+	uint32_t m_startOffset = 0;
+	uint32_t m_symbolSize;
 	uint32_t m_SearchRange = 25;
 	ofdmFFT *pFFT;
 	NyquistModulator* pNyquistModulator;

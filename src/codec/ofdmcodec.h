@@ -19,6 +19,7 @@
 
 // Ofdmlib objects
 #include "detector.h"
+#include "qam-modulator.h"
 #include "common.h"
 
 struct OFDMSettings
