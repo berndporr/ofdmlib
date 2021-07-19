@@ -67,7 +67,7 @@ public:
 	int Close();
 	int ComputeTransform();
 	int ComputeTransform(fftw_complex *dest);
-	double GetImagSum();
+	double GetImagSum(size_t nBytes);
 
 public:
 

@@ -19,7 +19,7 @@
 * @return 0 on success, else error number
 *
 */
-int Detector::Configure(uint32_t fftPoints, uint32_t prefixSize, ofdmFFT *fft, NyquistModulator* nyquist)
+int Detector::Configure(size_t fftPoints, size_t prefixSize, ofdmFFT *fft, NyquistModulator* nyquist)
 {   
     // Set variables
     m_nPrefix = prefixSize;
@@ -72,7 +72,7 @@ double Detector::ExecuteCorrelator(const DoubleVec &input, size_t prefixOffset)
 * @return symbol start(integer) index.
 *
 */
-size_t Detector::FindSymbolStart(const DoubleVec &input)
+size_t Detector::FindSymbolStart(const DoubleVec &input, size_t nBytes)
 {   
     size_t coarseStart = 0;
     size_t symbolStart = 0;
@@ -84,7 +84,7 @@ size_t Detector::FindSymbolStart(const DoubleVec &input)
     if(coarseStart >= 0)
     {
         // Pilot Tone Search
-        symbolStart = FineSearch(input, coarseStart);
+        symbolStart = FineSearch(input, coarseStart, nBytes);
         //symbolStart = CoarseStart;
     }
     // Return Symbol start
@@ -102,7 +102,7 @@ size_t Detector::FindSymbolStart(const DoubleVec &input)
 * @return fine symbol start index, else -1
 *
 */
-size_t Detector::FineSearch(const DoubleVec &buff, size_t coarseStart)
+size_t Detector::FineSearch(const DoubleVec &buff, size_t coarseStart, size_t nbytes)
 {
     double min = 100000;
     double sumOfImag = 0.0;
@@ -131,7 +131,7 @@ size_t Detector::FineSearch(const DoubleVec &buff, size_t coarseStart)
         // Normalise
         pFFT->Normalise();
         // SUM imag parts
-        sumOfImag = abs(pFFT->GetImagSum());
+        sumOfImag = abs(pFFT->GetImagSum(nbytes));
         if( sumOfImag < min )
         {
             min = sumOfImag;
@@ -149,7 +149,7 @@ size_t Detector::FineSearch(const DoubleVec &buff, size_t coarseStart)
 * @return symbol start(integer) index, else -1
 *
 */
-size_t Detector::CoarseSearch(const DoubleVec &input)
+size_t Detector::CoarseSearch(const DoubleVec &input) // change return type to 
 {
     bool startNotFound = true;
     double correlation = 0;
@@ -192,12 +192,16 @@ size_t Detector::CoarseSearch(const DoubleVec &input)
         // The coarse search for this offset value has not been sucessfull,
         // Increment offset
         m_startOffset++;
-        // TODO: Need to add extra logic to tell the function when the whole buffer has been searched
 
+        // TODO: Need to add extra logic to tell the function when the whole buffer has been searched
+        if( m_startOffset == input.size() )
+        {
+            m_startOffset = 0;
+            // Whole buffer searched, no symbol has been detected
+            return -1;
+        }
     }
-    // Whole buffer searched, no symbol has been detected
-    m_startOffset = 0;
-    return -1;
+    return 0;
 }
 
 

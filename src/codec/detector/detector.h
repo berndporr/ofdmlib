@@ -62,10 +62,10 @@ public:
 	* @param buffSize size of the buffer 
 	*
 	*/
-	Detector(uint32_t nPoints, uint32_t prefixSize, ofdmFFT *fft, NyquistModulator *nyquist) :
+	Detector(size_t nPoints, size_t prefixSize, ofdmFFT *fft, NyquistModulator *nyquist) :
 			m_configured(0),
 			m_nPrefix(prefixSize),
-			m_threshold(30.0), // TODO: Calibration function which listens to the noise and sets this value
+			m_threshold(30000.0), // TODO: Calibration function which listens to the noise and sets this value
 			m_startOffset(0),
 			m_symbolSize(nPoints*2),
 			m_SearchRange(25),
@@ -85,22 +85,22 @@ public:
 		Close();
 	}
 
-	int Configure(uint32_t fftPoints, uint32_t prefixSize, ofdmFFT *fft, NyquistModulator *nyquist);
+	int Configure(size_t fftPoints, size_t prefixSize, ofdmFFT *fft, NyquistModulator *nyquist);
 	int Close();
 	size_t CoarseSearch(const DoubleVec &input);
 		
 	double ExecuteCorrelator(const DoubleVec &input, size_t Offset);
-	size_t FindSymbolStart(const DoubleVec &input);
-	size_t FineSearch(const DoubleVec &input, size_t coarseStart);
+	size_t FindSymbolStart(const DoubleVec &input, size_t nbytes);
+	size_t FineSearch(const DoubleVec &input, size_t coarseStart, size_t nbytes);
 
 private:
 
 	int m_configured = 0;
-	uint32_t m_nPrefix;
-	double m_threshold = 30.0; // TODO: Calibration function which listens to the noise and sets this value
-	uint32_t m_startOffset = 0;
-	uint32_t m_symbolSize;
-	uint32_t m_SearchRange = 25;
+	size_t m_nPrefix;
+	double m_threshold; // TODO: Calibration function which listens to the noise and sets this value
+	size_t m_startOffset;
+	size_t m_symbolSize;
+	size_t m_SearchRange;
 	ofdmFFT *pFFT;
 	NyquistModulator* pNyquistModulator;
 	//DoubleVec &input; 

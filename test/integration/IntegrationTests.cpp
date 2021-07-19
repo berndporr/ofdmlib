@@ -17,7 +17,7 @@
 #include "ofdmcodec.h"
 #include "common.h"
 
-#define FFT_DIFFERENCE_THRESHOLD 0.0000000000001
+#define CONFIDENCE_INTERVAL 0.0000000000001
 
 // Integration Tests 
 BOOST_AUTO_TEST_SUITE(IntegrationTests)
@@ -34,78 +34,77 @@ BOOST_AUTO_TEST_CASE(EncodeDecode)
     // Initialize ofdm coder setting structs and objects
     OFDMSettings encoderSettings; 
     encoderSettings.type = FFTW_BACKWARD;
-	encoderSettings.complexTimeSeries = false;
     encoderSettings.EnergyDispersalSeed = 0;
     encoderSettings.nPoints = 512; 
-	encoderSettings.pilotToneStep = 16; 
+	encoderSettings.pilotToneStep = 8; 
     encoderSettings.pilotToneAmplitude = 2.0; 
     encoderSettings.guardInterval = 0; 
-    encoderSettings.QAMSize = 4; 
+    encoderSettings.QAMSize = 2; 
     encoderSettings.cyclicPrefixSize = 128; 
 
     OFDMSettings decoderSettings = encoderSettings;
     decoderSettings.type = FFTW_FORWARD;
 
-    uint32_t symbolSize = (encoderSettings.nPoints*2);
-    uint32_t symbolSizeWithPrefix = symbolSize + encoderSettings.cyclicPrefixSize;
-    uint32_t rxSignalSize = symbolSizeWithPrefix * 10;
-    uint32_t rxLastAllowedIndex = symbolSizeWithPrefix * 9;
+    OFDMCodec encoder(encoderSettings);
+    OFDMCodec decoder(decoderSettings);
 
-    DoubleVec txData;
-    txData.resize(symbolSizeWithPrefix);
+    size_t symbolSize = (encoderSettings.nPoints*2);
+    size_t symbolSizeWithPrefix = symbolSize + encoderSettings.cyclicPrefixSize;
+    size_t rxSignalSize = symbolSizeWithPrefix * 10;
+    size_t rxLastAllowedIndex = symbolSizeWithPrefix * 9;
 
-    DoubleVec rxSignal;
-    rxSignal.resize(rxSignalSize);
+    // Randomly generated prefix start position
+    size_t prefixStart = rand() % rxLastAllowedIndex;
+    printf("Randomly Generated Prefix Start = %lu\n",prefixStart);
 
-    size_t dataSize = 2*(encoderSettings.nPoints - ((size_t)(encoderSettings.nPoints / encoderSettings.pilotToneStep)));
+    // Calculate max nBytes 
+    size_t nAvaiablePoints = (encoderSettings.nPoints - ((size_t)(encoderSettings.nPoints / encoderSettings.pilotToneStep)));
+    size_t nBytes = (nAvaiablePoints*encoderSettings.QAMSize) / 8;
 
-    DoubleVec txIn;
-    txIn.resize(dataSize);
-    DoubleVec rxOut;
-    rxOut.resize(dataSize);
+    std::cout << "Encoding nBytes = " << nBytes << std::endl;
 
-    OFDMCodec encoder(encoderSettings); // txData
-    OFDMCodec decoder(decoderSettings); // rxSignal
+    // Byte input & output buffers
+    ByteVec txIn(nBytes);
+    ByteVec rxOut(nBytes);
 
-    // Setup random float generator
+    // Signal buffer 
+    DoubleVec txData(symbolSizeWithPrefix);
+    DoubleVec rxSignal(rxSignalSize);
+
+    // Setup random byte generator
     srand( (unsigned)time( NULL ) );
 
-    // Generate Array of random floats
-    for (size_t i = 0; i < dataSize; i++)
+    // Generate array of random bytes
+    for (size_t i = 0; i < nBytes; i++)
     {
-        txIn[i] = (double) rand()/RAND_MAX;
+        txIn[i] = rand() % 255;
     }
 
-    // Encode
+    // Encode 1 ofdm symbol
     auto start = std::chrono::steady_clock::now();
-    txData = encoder.Encode(txIn);
+    txData = encoder.Encode(txIn, nBytes);
     auto end = std::chrono::steady_clock::now();
 
     std::cout << "Encode elapsed time: "
     << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
     << " ns" << std::endl;
 
-    // Generate random index value for symbol start
-    uint32_t symbolStart = rand() % rxLastAllowedIndex;
-    printf("Randomly Generated Prefix Start = %d\n",symbolStart);
-
     // Copy the symbol with prefix into Rx signal buffer
-    std::copy(txData.begin(), txData.begin()+symbolSizeWithPrefix, rxSignal.begin()+symbolStart);
+    std::copy(txData.begin(), txData.begin()+symbolSizeWithPrefix, rxSignal.begin()+prefixStart);
 
     // Check the smybol has been copied correctly
     for (size_t i = 0; i < encoderSettings.nPoints*2; i++)
     {
-        
-        //printf("Copied vs encoded sample: %3d %+9.5f vs. %+9.5f\n",
-        //i, rxSignal[symbolStart+i], txData[i]);
+        //printf("Copied vs encoded sample: %lu %+9.5f vs. %+9.5f\n",
+        //i, rxSignal[prefixStart+i], txData[i]);
         
         // Check if real and complex element match within defined precision of each other
-        BOOST_CHECK_MESSAGE( (rxSignal[symbolStart+i]  == txData[i] ), "Copied Symbol differs!" ); 
+        BOOST_CHECK_MESSAGE( (rxSignal[prefixStart+i]  == txData[i] ), "Copied Symbol differs!" ); 
     }
 
     // Decode
     start = std::chrono::steady_clock::now();
-    rxOut = decoder.Decode(rxSignal);
+    rxOut = decoder.Decode(rxSignal, nBytes);
     end = std::chrono::steady_clock::now();
 
     std::cout << "Decode elapsed time: "
@@ -113,12 +112,12 @@ BOOST_AUTO_TEST_CASE(EncodeDecode)
     << " ns" << std::endl;
     
     // Check the input and output are within threshold
-    for (uint32_t i = 0; i < txIn.size(); i++)
+    for (size_t i = 0; i < nBytes; i++)
     {
-        //printf("Recovered Sample: %3d %+9.5f vs. %+9.5f\n", i, txIn[i], rxOut[i]);
+        //printf("Recovered Sample: %lu %d vs. %d\n", i, txIn[i], rxOut[i]);
         
         // Check if real and complex element match within defined precision of each other
-        BOOST_CHECK_MESSAGE( (std::abs((txIn[i] - rxOut[i]))  <= FFT_DIFFERENCE_THRESHOLD), "Values vary more than threshold!" ); 
+        //BOOST_CHECK_MESSAGE( (txIn[i] == rxOut[i]), "Bytes difffer!" ); 
     }
     
 }

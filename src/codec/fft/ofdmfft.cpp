@@ -82,24 +82,47 @@ int ofdmFFT::Normalise()
 * @return symbol start(integer) index, else -1
 *
 */
-double ofdmFFT::GetImagSum() 
+double ofdmFFT::GetImagSum(size_t nBytes) 
 {
     double sumOfImag = 0.0;
-    uint32_t pilotToneCounter = m_pilotToneStep;
-    uint32_t fftPointIndex = 0;
-    while(fftPointIndex < m_nFFT)
+    size_t pilotToneCounter =  (int) m_pilotToneStep / 2 ; // divide this by to when starting with -ve frequencies
+    size_t fftPointIndex = (int) ((m_nFFT*2) - (m_nFFT*2) / m_pilotToneStep / 2 - nBytes * 4 / 2);
+    fftPointIndex = (int) fftPointIndex / 2;
+    size_t insertionCounter = 0;
+    // For expected byte 
+    for(size_t byteCounter = 0; byteCounter < nBytes; byteCounter++)
     {
-        if(pilotToneCounter == 0)
+        insertionCounter = 0;
+        // Process 4 FFT points i.e 8 bits
+        while(insertionCounter < 4)
         {
-            sumOfImag += out[fftPointIndex][1];
-            pilotToneCounter = m_pilotToneStep;
+            // If pilot tone counter counted down
+            // This point is the pilot tone
+            if(pilotToneCounter == 0)
+            {
+                // Reset Counter
+                pilotToneCounter = m_pilotToneStep;
+                sumOfImag += out[fftPointIndex][1];
+    
+            }
+            // This point is QAM encoded complex point
+            else
+            {
+                insertionCounter++;
+                pilotToneCounter--;
+            }
+            // Increment fft point counter
+            fftPointIndex++;
+            // Check if fft exceeds the limit of points
+            if(fftPointIndex == m_nFFT)
+            {
+                // Roll back to positive frequencies
+                fftPointIndex = 0;
+            }
         }
-        else
-        {
-            pilotToneCounter--;
-        }
-        fftPointIndex++;
+
     }
+    // Return sum
     return sumOfImag;
 }
 
