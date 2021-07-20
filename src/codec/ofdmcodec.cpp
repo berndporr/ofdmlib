@@ -6,7 +6,6 @@
 * 
 */
 
-#define UINT16_T_UPPER_LIMIT 65535
 
 #include <string>
 #include <unistd.h>
@@ -23,11 +22,12 @@
 /**
 * Encodes one OFDM Symbol
 * 
-* @param inputData reference to input data array
+* @param inputData reference to input data byte vector
 *
-* @return 0 On Success, else error number.
+* @param nBytes number of bytes encoded in the symbol
 *
-* @todo: Modify this so all data types can be handled not just the dobuleVec.
+* @return vector containing encoded symbol 
+*
 */
 DoubleVec OFDMCodec::Encode(const ByteVec &input, size_t nBytes)
 {
@@ -51,15 +51,16 @@ DoubleVec OFDMCodec::Encode(const ByteVec &input, size_t nBytes)
 /**
 * Decodes One OFDM Symbol
 *
-* @return 0 On Success, else error number.
+* @param inputData reference to input data double vector
 *
-* @todo: Update for each new feature.
+* @param nBytes number of bytes encoded in the symbol
+*
+* @return byte vector containing decoded bytes
+*
 */
 ByteVec OFDMCodec::Decode(const DoubleVec &input, size_t nBytes)
 {
-    // Data size is the number of points minus number of pilot tones 
-    //size_t dataSize = (2 * (m_Settings.nPoints - (size_t)(m_Settings.nPoints/m_Settings.cyclicPrefixSize)));
-    // nBytes
+    // Create output vector
     ByteVec output(nBytes);
     // Time sync to first symbol start
     size_t symbolStart = 0;

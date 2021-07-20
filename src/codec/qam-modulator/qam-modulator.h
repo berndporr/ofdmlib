@@ -19,8 +19,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#define BITS_IN_BYTE 8
+
 /**
- * @brief QAM modulator
+ * @brief 4-QAM modulator object,
+ *
  * 
  */
 class QamModulator {
@@ -44,8 +47,7 @@ public:
 	~QamModulator()
 	{
 
-	}
-    //template<typename T, typename A> 
+	} 
     void Modulate(const ByteVec &input, DoubleVec &output, size_t nBytes);
     void Demodulate(const DoubleVec &input, ByteVec &output, size_t nBytes); 
 
@@ -61,20 +63,27 @@ private:
 
 
 /**
-* Template QAM modulator encoding function
+* 4-QAM modulator function.
+* Each fft point is capable of encoding 2bits.
+* Firstly energy dispersal is performed of each byte,
+* then a byte is encoded and placed into the ifft buffer.
+* This is acheived by macro which performs logical AND operation
+* on the data byte and mask which is subsequently shifted.
+* In addition a counter is used to insert pilot tone at appropriate
+* locations specified by the object parameters.    
 * 
 * @param input reference to input data array to be encoded
-* @param output reference to output data array, this is most likley the ifft input
+*
+* @param output reference to output data array, the ifft input
 *
 */
-//template<typename T, typename A> 
 inline void QamModulator::Modulate(const ByteVec &input, DoubleVec &output, size_t nBytes) 
 {
     // Compute avaiable points for ifft
     // This depends on the size of the ifft and pilot tone step
     size_t nAvaiableifftPoints = (m_nFFT - (int)(m_nFFT/m_pilotToneStep));
     // Compute the equivelent of avaiable data bytes per symbol
-    size_t nMaxEncodedBytes = (int)((nAvaiableifftPoints *  m_BitsPerSymbol)  / 8);
+    size_t nMaxEncodedBytes = (int)((nAvaiableifftPoints *  m_BitsPerSymbol)  / BITS_IN_BYTE);
 
     // Check if the the number of bytes expected be demodulated is within one symbol
     if(nMaxEncodedBytes < nBytes)
@@ -101,8 +110,11 @@ inline void QamModulator::Modulate(const ByteVec &input, DoubleVec &output, size
     size_t byteCounter = 0;
     while(byteCounter < nBytes)
     {
-        dataByte = input[byteCounter];// ^ rand() % 255;
+        // Perform energy dispersal by xor-ing the data byte
+        dataByte = input[byteCounter] ^ rand() % 255;
+        // Reset bit mask
         bitMask = 0x01;
+        // Reset fft point insertion counter 
         insertionCounter = 0;
         // While byte is being encoded
         while(insertionCounter < 4)
@@ -151,19 +163,25 @@ inline void QamModulator::Modulate(const ByteVec &input, DoubleVec &output, size
 
 
 /**
-* QAM Demodulator function
+* 4-QAM demodulator function.
+* Demodulator steps through the fft output and setting 
+* bits of each expected byte omitting pilot tones. The
+* bit setting is achieved through logixal OR operation.
+* This is a simplistic hard decision algorithm, if the
+* value of the fft component exceeding 0 is equivelent
+* to bit being set. 
 * 
 * @param input reference to input data array, the output of the fft
 *
-* @param output reference to output data array, this is the 
+* @param output reference to output data array
 *
-* @param nBytes The expected number of byte to be decoded from the symbol
+* @param nBytes The expected number of bytes to be decoded from the symbol
 *
 */
 inline void QamModulator::Demodulate(const DoubleVec &input, ByteVec &output, size_t nBytes)
 {
     size_t nAvaiableifftPoints = (m_nFFT - (int)(m_nFFT/m_pilotToneStep));
-    size_t nMaxEncodedBytes = (int)((nAvaiableifftPoints *  m_BitsPerSymbol)  / 8);
+    size_t nMaxEncodedBytes = (int)((nAvaiableifftPoints *  m_BitsPerSymbol)  / BITS_IN_BYTE);
 
     // Check if the the number of bytes expected be demodulated is within one symbol
     if(nMaxEncodedBytes < nBytes)
@@ -190,6 +208,7 @@ inline void QamModulator::Demodulate(const DoubleVec &input, ByteVec &output, si
     {
         // Reset byte
         output[byteCounter] = 0;
+        // Reset fft input pointer
         insertionCounter = 0;
         // Reset bit mask
         bitMask = 0x01;
@@ -240,10 +259,8 @@ inline void QamModulator::Demodulate(const DoubleVec &input, ByteVec &output, si
                 fftPointCounter = 0;
             }
         }
-
-        // Energy dispersal by xor-ing input byte with random value
-        //output[byteCounter] ^= rand() % 255;
+        // Recover original data by xor-ing input byte with random value
+        output[byteCounter] ^= rand() % 255;
     }
-
 }
 #endif

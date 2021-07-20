@@ -62,7 +62,7 @@ public:
 		Close();
 	}
 
-	int Configure(uint16_t nPoints, int type, uint32_t pilotStep);
+	int Configure(size_t nPoints, int type, size_t pilotStep);
 	int Normalise();
 	int Close();
 	int ComputeTransform();
@@ -76,8 +76,8 @@ public:
 
 private:
 
-	uint16_t m_nFFT = 0;
-	uint32_t m_pilotToneStep = 0;
+	size_t m_nFFT = 0;
+	size_t m_pilotToneStep = 0;
 	int m_configured = 0;
     fftw_plan m_fftplan; /// FFT plan 
 

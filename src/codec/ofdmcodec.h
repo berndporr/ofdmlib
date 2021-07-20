@@ -67,18 +67,12 @@ public:
 	}
 
 
-    // Encoding Related Functions
+    // Encoding Related Functions //
     DoubleVec Encode(const ByteVec &input, size_t nBytes);
-
-    // Decode
+    // Decode Related Functions //
     ByteVec Decode(const DoubleVec &input, size_t nBytes);
 
     const OFDMSettings & GetSettings() const;
-
-
-    //int Configure(OFDMSettings settingsStruct, DoubleVec &buffer);
-
-
 
 private:
     // ofdm related objects

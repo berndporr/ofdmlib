@@ -19,7 +19,7 @@
 * @return 0 on success, else error number
 *
 */
-int ofdmFFT::Configure(uint16_t nPoints, int type, uint32_t pilotStep)
+int ofdmFFT::Configure(size_t nPoints, int type, size_t pilotStep)
 {   
     // If object has been configured before
     if(m_configured)
