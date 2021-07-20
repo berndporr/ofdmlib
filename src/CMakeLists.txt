@@ -3,12 +3,12 @@
 #
 # /src CMake Project file
 
-#set( CMAKE_VERBOSE_MAKEFILE on )
+set( CMAKE_VERBOSE_MAKEFILE on )
 # Specify minimum CMake version
 cmake_minimum_required(VERSION 3.10)
 
 # Specify the C++ standard
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Set the project name and version
@@ -24,25 +24,26 @@ set(INCLUDE_DIRS
    ${CMAKE_CURRENT_SOURCE_DIR}/utils
    ${CMAKE_CURRENT_SOURCE_DIR}/codec
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/fft
-   ${CMAKE_CURRENT_SOURCE_DIR}/codec/band-pass-modulator
-   ${CMAKE_CURRENT_SOURCE_DIR}/codec/cyclic-prefix
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/nyquist-modulator
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/detector
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/qam-modulator
 )
 
 # Set Source files
 set(SOURCE_FILE    
-   ${CMAKE_CURRENT_SOURCE_DIR}/codec/fft/ofdmfft.h
+   #${CMAKE_CURRENT_SOURCE_DIR}/codec/fft/ofdmfft.h
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/fft/ofdmfft.cpp 
 
-   ${CMAKE_CURRENT_SOURCE_DIR}/codec/band-pass-modulator/bandpass.h
-   ${CMAKE_CURRENT_SOURCE_DIR}/codec/band-pass-modulator/bandpass.cpp 
+   #${CMAKE_CURRENT_SOURCE_DIR}/codec/nyquist-modulator/nyquist-modulator.h
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/nyquist-modulator/nyquist-modulator.cpp
 
-   ${CMAKE_CURRENT_SOURCE_DIR}/codec/cyclic-prefix/cyclicprefix.h
-   ${CMAKE_CURRENT_SOURCE_DIR}/codec/cyclic-prefix/cyclicprefix.cpp
+   #${CMAKE_CURRENT_SOURCE_DIR}/codec/detector/detector.h
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/detector/detector.cpp
 
    ${CMAKE_CURRENT_SOURCE_DIR}/utils/gnuplot-iostream.h
 
-   ${CMAKE_CURRENT_SOURCE_DIR}/codec/ofdmcodec.h
-   ${CMAKE_CURRENT_SOURCE_DIR}/codec/ofdmcodec.cpp 
+   #${CMAKE_CURRENT_SOURCE_DIR}/codec/ofdmcodec.h
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/ofdmcodec.cpp
 )
 
 # Create library
@@ -60,4 +61,4 @@ add_executable(ofdmlibDemo ${CMAKE_CURRENT_SOURCE_DIR}/demo/demo.cpp)
 # Link libraries to executable
 target_link_libraries(ofdmlibDemo ofdmlib fftw3 ${CMAKE_THREAD_LIBS_INIT})
 
-# TODO: FIND WHAT IS THE BEST WAY TO LINK fftw3 & HOW TO MAKE TESTS FIND THE FILES WITHOUT USING  target_include_directories ON OFDMLIB
+# TODO: FIND WHAT IS THE BEST WAY TO LINK fftw3 & HOW TO MAKE TESTS FIND THE FILES WITHOUT USING target_include_directories ON OFDMLIB

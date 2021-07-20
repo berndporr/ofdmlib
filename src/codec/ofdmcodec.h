@@ -17,34 +17,21 @@
 #include <math.h>
 #include <fftw3.h>
 
-#include "ofdmfft.h"
-#include "bandpass.h"
-#include "cyclicprefix.h"
-
+// Ofdmlib objects
+#include "detector.h" // this has fft & nyquist definitions as include header
+#include "qam-modulator.h"
+#include "common.h"
 
 struct OFDMSettings
 {
     int type;
-	bool complexTimeSeries = false; // Complexity
-    uint16_t EnergyDispersalSeed;
-    uint16_t nPoints; // Total number of FFT & IFFT coefficients 
-	uint16_t pilotToneStep; // Pilot Tones
-    float    pilotToneAmplitude; // Pilot Tones
-    uint16_t guardInterval; // The time between the current and consecutive ofdm symbol
-    uint16_t QAMSize; // QAM Modulator 
-    uint32_t cyclicPrefixSize; // Cyclic-Prefix
-};
-
-
-/**
-* Return codes for get & set functions for the settings 
-*
-*/
-enum SET_SETTINGS_RETURN_STATUS
-{
-	OK	                = 0,
-	EXCEEDS_UPPER_LIMIT = 1,
-	EXCEEDS_LOWER_LIMIT = 2
+    size_t EnergyDispersalSeed; 
+    size_t nPoints; // Total number of FFT & IFFT coefficients 
+	size_t pilotToneStep; // Pilot Tones
+    double  pilotToneAmplitude; // Pilot Tones
+    size_t guardInterval; // The time between the current and consecutive ofdm symbol
+    size_t QAMSize; // QAM Modulator 
+    size_t cyclicPrefixSize; // Cyclic-Prefix
 };
 
 
@@ -60,60 +47,46 @@ class OFDMCodec {
 
 public: 
 
-	OFDMCodec(OFDMSettings settingsStruct, double *buffer, uint32_t bufferSize)
+	OFDMCodec(OFDMSettings settingsStruct) :
+        m_Settings(settingsStruct),
+        m_fft(settingsStruct.nPoints, settingsStruct.type, settingsStruct.pilotToneStep),
+        m_NyquistModulator(settingsStruct.nPoints, ( settingsStruct.type == +1 ) ?  m_fft.out : m_fft.in),
+        m_detector(settingsStruct.nPoints, settingsStruct.cyclicPrefixSize, &m_fft, &m_NyquistModulator),
+        m_qam(settingsStruct.nPoints, settingsStruct.pilotToneStep,  settingsStruct.pilotToneAmplitude, settingsStruct.EnergyDispersalSeed, settingsStruct.QAMSize)
     {
-        Configure(settingsStruct, buffer, bufferSize);
+
 	}
 
-    // Encoding Related Functions
-    int Encode(double *inputData);
-    int Encode(double *inputData, double *outputData);
+    /**
+	* Destructor 
+	*
+	*/
+	~OFDMCodec()
+	{
 
-    int Configure(OFDMSettings settingsStruct, double *buffer, uint32_t bufferSize);
+	}
 
-    int QAMModulatorPlaceholder(double *data);
-    int QAMDemodulatorPlaceholder(double *data);
 
-    // Decode
-    int Decode();
+    // Encoding Related Functions //
+    DoubleVec Encode(const ByteVec &input, size_t nBytes);
+    // Decode Related Functions //
+    ByteVec Decode(const DoubleVec &input, size_t nBytes);
 
-    // Get & Set Functions for the settings variables
-    uint16_t SetEnergyDispersalSeed(uint16_t seed);
-    uint16_t GetEnergyDispersalSeed();
-    
-    uint16_t SetCodecType(int type);
-    int GetCodecType();
-
-    uint16_t SetnPoints(uint16_t newNPoints);
-    uint16_t GetnPoints();
-
-    uint16_t SetTimeComplexity(bool newComplexity);
-    bool GetTimeComplexity();
-
-    uint16_t GetPilotTonesIndicies(); // This should probably return an array of the pilotTones
-    uint16_t GetPilotToneStep();
-    uint16_t SetPilotTones(uint16_t newPilotToneStep);
-    uint16_t SetPilotTones(uint16_t newPilotToneVector[], uint16_t nPilots); // nPilots might not be needed.
-
-    uint16_t GetPilotTonesAmplitude();
-    uint16_t SetPilotTonesAmplitude(float newPilotToneStep);
-
-    uint16_t GetQAMSize();
-    uint16_t SetQAMSize(uint16_t newQAMSize);
-
-    uint16_t GetCyclicPrefixSize();
-    uint16_t SetCyclicPrefixSize(uint16_t newCyclicPrefixSize);
-
-    // Objects
-	ofdmFFT m_fft; // TODO: In future releases this can possibly made private
+    const OFDMSettings & GetSettings() const;
 
 private:
-    // Settings
+    // ofdm related objects
     OFDMSettings m_Settings;
-    BandPassModulator m_bandPass;
-    Correlator m_correlator;
-    
+	ofdmFFT m_fft;
+    NyquistModulator m_NyquistModulator;
+    Detector m_detector;
+    QamModulator m_qam;
 
 };
+
+ inline const OFDMSettings & OFDMCodec::GetSettings() const
+ {
+     return m_Settings;
+ }
 
 #endif
