@@ -24,3 +24,8 @@ sudo apt-get install libboost-all-dev -y
 sudo apt-get install fftw3 -y
 sudo apt-get install libfftw3-bin -y
 sudo apt-get install libfftw3-dev -y
+
+# Audio Demo Dependencies
+sudo apt-get install libpulse-dev -y
+sudo apt-get install libasound2-dev -y
+sudo apt-get install librtaudio-dev -y
