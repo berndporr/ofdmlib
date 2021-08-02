@@ -4,12 +4,22 @@
 *
 * @section DESCRIPTION
 *
-* 4-QAM Encoder/Decoder
+* 4-QAM Modulator/Demodulator
 *
 * TODO: Breaking the encoding and decoding process into two loops for +ve and -ve
         freq respectivley is going to speed up processing.
 * TODO: Recursive encoding & decoding could be faster and could allow for multiple QAM schemes 
 */
+
+
+/*
+    // Precise starting point calculation
+    size_t nPilots = (size_t) ((m_nFFT - ((nBytes*BITS_IN_BYTE)/BITS_PER_FREQ_POINT))/m_pilotToneStep);
+    // Compute frequency coefficient index used
+    // Assume spectrum is centred symmetrically around DC and depends on nBytes
+    size_t startIndex = (size_t) ((m_nFFT) - (nPilots/ 2) - ((nBytes * 4) / 2)); // Pilot tones are set incorrectly 
+*/
+
 #ifndef QAM_MODULATOR_H
 #define QAM_MODULATOR_H
 
@@ -20,6 +30,7 @@
 #include <string.h>
 
 #define BITS_IN_BYTE 8
+#define BITS_PER_FREQ_POINT 2
 
 /**
  * @brief 4-QAM modulator object,
@@ -48,8 +59,8 @@ public:
 	{
 
 	} 
-    void Modulate(const ByteVec &input, DoubleVec &output, size_t nBytes);
-    void Demodulate(const DoubleVec &input, ByteVec &output, size_t nBytes); 
+    void Modulate(const uint8_t *input, DoubleVec &output, size_t nBytes);
+    void Demodulate(const DoubleVec &input, uint8_t *output, size_t nBytes); 
 
 private:
 
@@ -77,7 +88,7 @@ private:
 * @param output reference to output data array, the ifft input
 *
 */
-inline void QamModulator::Modulate(const ByteVec &input, DoubleVec &output, size_t nBytes) 
+inline void QamModulator::Modulate(const uint8_t *input, DoubleVec &output, size_t nBytes) 
 {
     // Compute avaiable points for ifft
     // This depends on the size of the ifft and pilot tone step
@@ -88,17 +99,18 @@ inline void QamModulator::Modulate(const ByteVec &input, DoubleVec &output, size
     // Check if the the number of bytes expected be demodulated is within one symbol
     if(nMaxEncodedBytes < nBytes)
     {
+        std::cout << "QamModulator: Modulate: Error: Expected # of Bytes in this symbol exceeds the possible max! = " << nBytes << std::endl;
         return;
     }
-
+    size_t nPilots = (size_t) (((nBytes*BITS_IN_BYTE)/BITS_PER_FREQ_POINT)/m_pilotToneStep);
     // Compute frequency coefficient index used
     // Assume spectrum is centred symmetrically around DC and depends on nBytes
-    size_t startIndex = (int) ((m_nFFT*2) - (m_nFFT*2) / m_pilotToneStep / 2 - nBytes * 4 / 2);
-    startIndex = (int) startIndex / 2;
+    size_t startIndex = (size_t) ((m_nFFT) - (nPilots/ 2) - ((nBytes * 4) / 2)); // Pilot tones are set incorrectly 
+    //size_t startIndex = (int) ((m_nFFT) - (((m_nFFT) / m_pilotToneStep) / 2) - ((nBytes * 4) / 2)); // Pilot tones are set incorrectly 
 
     // Start insertion with negative frequencies
     size_t ifftPointCounter = startIndex;
-    size_t pilotCounter =  (int) m_pilotToneStep / 2 ; // divide this by to when starting with -ve frequencies
+    size_t pilotCounter =  (int) (m_pilotToneStep / 2); // divide this by to when starting with -ve frequencies
 
     // Set pseudo-random number generator
     srand(m_EnergyDispersalSeed);
@@ -111,7 +123,8 @@ inline void QamModulator::Modulate(const ByteVec &input, DoubleVec &output, size
     while(byteCounter < nBytes)
     {
         // Perform energy dispersal by xor-ing the data byte
-        dataByte = input[byteCounter] ^ rand() % 255;
+        dataByte = input[byteCounter];
+        dataByte ^= rand() % 255;
         // Reset bit mask
         bitMask = 0x01;
         // Reset fft point insertion counter 
@@ -178,7 +191,7 @@ inline void QamModulator::Modulate(const ByteVec &input, DoubleVec &output, size
 * @param nBytes The expected number of bytes to be decoded from the symbol
 *
 */
-inline void QamModulator::Demodulate(const DoubleVec &input, ByteVec &output, size_t nBytes)
+inline void QamModulator::Demodulate(const DoubleVec &input, uint8_t *output, size_t nBytes)
 {
     size_t nAvaiableifftPoints = (m_nFFT - (int)(m_nFFT/m_pilotToneStep));
     size_t nMaxEncodedBytes = (int)((nAvaiableifftPoints *  m_BitsPerSymbol)  / BITS_IN_BYTE);
@@ -186,17 +199,19 @@ inline void QamModulator::Demodulate(const DoubleVec &input, ByteVec &output, si
     // Check if the the number of bytes expected be demodulated is within one symbol
     if(nMaxEncodedBytes < nBytes)
     {
+        std::cout << "QamModulator: Demodulate: Error: Expected # of Bytes in this symbol exceeds the possible max! = " << nBytes << std::endl;
         return;
     }
 
+    size_t nPilots = (size_t) (((nBytes*BITS_IN_BYTE)/BITS_PER_FREQ_POINT)/m_pilotToneStep);
     // Compute frequency coefficient index used
     // Assume spectrum is centred symmetrically around DC and depends on nBytes
-    size_t startIndex = (int) ((m_nFFT*2) - (m_nFFT*2) / m_pilotToneStep / 2 - nBytes * 4 / 2);
-    startIndex = (int) startIndex / 2;
+    size_t startIndex = (size_t) ((m_nFFT) - (nPilots/ 2) - ((nBytes * 4) / 2)); // Pilot tones are set incorrectly 
+    //size_t startIndex = (int) ((m_nFFT) - (((m_nFFT) / m_pilotToneStep) / 2) - ((nBytes * 4 )/ 2));
 
     // Start insertion with negative frequencies
     size_t fftPointCounter = startIndex;
-    size_t pilotCounter =  (int) m_pilotToneStep / 2 ; // divide this by two when starting with -ve frequencies
+    size_t pilotCounter = (int) (m_pilotToneStep / 2); // divide this by two when starting with -ve frequencies
 
     // Set pseudo-random number generator
     srand(m_EnergyDispersalSeed);

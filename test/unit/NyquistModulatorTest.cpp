@@ -50,11 +50,17 @@ BOOST_AUTO_TEST_CASE(ModToDemod)
     DoubleVec ifftOutput;
     ifftOutput.resize(symbolSize);
 
-    DoubleVec modulatorOutput;
-    modulatorOutput.resize(symbolSize);
+    //DoubleVec modulatorOutput;
+    //modulatorOutput.resize(symbolSize);
 
-    DoubleVec rxSignal;
-    rxSignal.resize(symbolSize*10);
+    //DoubleVec rxSignal;
+    //rxSignal.resize(symbolSize*10);
+
+
+    //uint8_t * txBytes = (uint8_t*) calloc(nData, sizeof(uint8_t));
+    double * modulatorOutput = (double*) calloc(symbolSize, sizeof(double));
+    double * rxSignal = (double*) calloc(symbolSize*10, sizeof(double));
+
 
     uint32_t symbolStart = rand() % ((nPoints*2)*9);
     printf("Random Symbol Start = %d\n",symbolStart);
@@ -68,8 +74,10 @@ BOOST_AUTO_TEST_CASE(ModToDemod)
         ifftOutput[i] = (double) rand()/RAND_MAX;
     }
 
-    std::copy(ifftOutput.begin(), ifftOutput.begin()+symbolSize, modulatorOutput.begin());
-  
+    //std::copy(ifftOutput.begin(), ifftOutput.begin()+symbolSize, modulatorOutput.begin());
+    memcpy(&modulatorOutput[0], &ifftOutput[0], sizeof(double)*symbolSize);
+
+
     NyquistModulator modulator(nPoints, (fftw_complex *) &modulatorOutput);
     NyquistModulator demodulator(nPoints, demodulatorOutput); 
 
@@ -87,7 +95,8 @@ BOOST_AUTO_TEST_CASE(ModToDemod)
 
     // basically it works like this:
     //std::copy( src, src + size, dest );
-    std::copy( modulatorOutput.begin(), modulatorOutput.end(), rxSignal.begin()+symbolStart);
+    //std::copy( modulatorOutput.begin(), modulatorOutput.end(), rxSignal.begin()+symbolStart);
+    memcpy(&rxSignal[symbolStart], &modulatorOutput[0], sizeof(double)*symbolSize);
 
     // Measure wall time of the fft execution.
     start = std::chrono::steady_clock::now();

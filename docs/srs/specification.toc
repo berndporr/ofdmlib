@@ -27,7 +27,7 @@
 \contentsline {subsubsection}{Digital Quadrature De/Modulator }{6}%
 \contentsline {subsubsection}{Pilot Tones}{7}%
 \contentsline {subsubsection}{Fourier and Inverse Fourier Transform}{7}%
-\contentsline {subsubsection}{Band-Pass Modulator}{8}%
+\contentsline {subsubsection}{Nyquist Modulator}{8}%
 \contentsline {subsubsection}{Cyclic-Prefix}{8}%
 \contentsline {subsubsection}{Channel Estimation}{9}%
 \contentsline {subsubsection}{Equalisation}{9}%

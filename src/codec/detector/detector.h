@@ -37,9 +37,10 @@
  * @return 0 on success, else error number
  * 
  */
-inline void AddCyclicPrefix(DoubleVec &symbol, uint32_t symbolSize, uint32_t prefixSize)
+inline void AddCyclicPrefix(double *symbol, size_t symbolSize, size_t prefixSize)
 {
-	std::copy(symbol.begin()+symbolSize, symbol.end(), symbol.begin() );
+	//std::copy(symbol.begin()+symbolSize, symbol.end(), symbol.begin() );
+	memcpy(&symbol[0], &symbol[symbolSize], sizeof(double)*prefixSize);
 }
 
 
@@ -62,36 +63,20 @@ public:
 	* @param buffSize size of the buffer 
 	*
 	*/
-	Detector(size_t nPoints, size_t prefixSize, ofdmFFT *fft, NyquistModulator *nyquist) :
-			m_configured(0),
-			m_nPrefix(prefixSize),
-			m_threshold(30000.0), // TODO: Calibration function which listens to the noise and sets this value
-			m_startOffset(0),
-			m_symbolSize(nPoints*2),
-			m_SearchRange(25),
-			pFFT(fft),
-			pNyquistModulator(nyquist)
-	{
-		//Configure(nPoints, prefixSize, fft, nyquist);
-	}
+	Detector(size_t nPoints, size_t prefixSize, ofdmFFT *fft, NyquistModulator *nyquist);
 
 	/**
 	* Destructor 
 	* Runs close function.
 	*
 	*/
-	~Detector()
-	{
-		Close();
-	}
+	~Detector();
 
-	int Configure(size_t fftPoints, size_t prefixSize, ofdmFFT *fft, NyquistModulator *nyquist);
-	int Close();
-	size_t CoarseSearch(const DoubleVec &input);
-		
-	double ExecuteCorrelator(const DoubleVec &input, size_t Offset);
-	size_t FindSymbolStart(const DoubleVec &input, size_t nbytes);
-	size_t FineSearch(const DoubleVec &input, size_t coarseStart, size_t nbytes);
+	long int CoarseSearch(const double *input);
+
+	double ExecuteCorrelator(const double *input, size_t Offset);
+	long int FindSymbolStart(const double *input, size_t nbytes);
+	size_t FineSearch(const double *input, size_t coarseStart, size_t nbytes);
 
 private:
 
@@ -103,7 +88,8 @@ private:
 	size_t m_SearchRange;
 	ofdmFFT *pFFT;
 	NyquistModulator* pNyquistModulator;
-	//DoubleVec &input; 
+	size_t m_prefixedSymbolSize;
+
 
 };
 

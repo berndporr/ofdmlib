@@ -66,8 +66,8 @@ public:
 
 	int Configure(size_t fftPoints, fftw_complex *pComplex);
 	int Close();
-	void Modulate(DoubleVec &ifftOutput, const size_t prefixSize);
-	void Demodulate(const DoubleVec &vectorBuffer, const size_t offset);
+	void Modulate(double *ifftOutput, const size_t prefixSize);
+	void Demodulate(const double *vectorBuffer, const size_t offset);
 
 private:
 

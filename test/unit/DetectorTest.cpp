@@ -40,11 +40,11 @@ BOOST_AUTO_TEST_CASE(CorrelatorTest)
 {
     printf("\nTesting Correlator...\n");
 
-    size_t nPoints = 512;
+    size_t nPoints = 1024;
     size_t symbolSize = nPoints*2;
     size_t prefixSize = (int) (symbolSize / 8);
     size_t symbolSizeWithPrefx = symbolSize + prefixSize;
-    size_t pilotToneStep = 8;
+    size_t pilotToneStep = 16;
     size_t bitsPerSymbol = 2;
     double pilotToneAmplitude = 2.0;
     size_t energyDispersalSeed = 10;
@@ -55,17 +55,21 @@ BOOST_AUTO_TEST_CASE(CorrelatorTest)
     // Setup random float generator
     srand( (unsigned)time( NULL ) );
 
-    //double modulatorOutput[symbolSizeWithPrefx];
-    DoubleVec modulatorOutput;
-    modulatorOutput.resize(symbolSizeWithPrefx);
-
     // Create rx signal array to capable of holding 20 upsampled symbols with prefix
     size_t rxSignalSize = (symbolSizeWithPrefx * 10);
     size_t rxLastAllowedIndex = (symbolSizeWithPrefx * 9);
 
-    DoubleVec rxSignal(rxSignalSize);
-    DoubleVec corellatorOutput(rxSignalSize);
-    ByteVec txBytes(nData);
+    uint8_t * txBytes = (uint8_t*) calloc(nData, sizeof(uint8_t));
+    double * modulatorOutput = (double*) calloc(symbolSizeWithPrefx, sizeof(double));
+    double * corellatorOutput = (double*) calloc(rxSignalSize, sizeof(double));
+    double * rxSignal = (double*) calloc(rxSignalSize, sizeof(double));
+
+    //double modulatorOutput[symbolSizeWithPrefx];
+    //DoubleVec modulatorOutput;
+    //modulatorOutput.resize(symbolSizeWithPrefx);
+    //DoubleVec rxSignal(rxSignalSize);
+    //DoubleVec corellatorOutput(rxSignalSize);
+    //ByteVec txBytes(nData);
 
     // Initialize Encoder objects
     QamModulator qam(nPoints, pilotToneStep, pilotToneAmplitude, energyDispersalSeed, bitsPerSymbol);
@@ -105,7 +109,8 @@ BOOST_AUTO_TEST_CASE(CorrelatorTest)
     }
 
     // Copy the symbol with prefix to Rx signal array
-    std::copy(modulatorOutput.begin(), modulatorOutput.begin()+symbolSizeWithPrefx, rxSignal.begin()+symbolStart);
+    //std::copy(modulatorOutput.begin(), modulatorOutput.begin()+symbolSizeWithPrefx, rxSignal.begin()+symbolStart);
+    memcpy(&rxSignal[symbolStart], &modulatorOutput[0], sizeof(double)*symbolSizeWithPrefx);
 
     // Check if the symbol with prefix has been copied correctly
     for(size_t i = 0 ; i < symbolSizeWithPrefx ; i++)
@@ -158,7 +163,7 @@ BOOST_AUTO_TEST_CASE(CorrelatorTest)
     size_t peakIndex = 0;
     double max = 0.0;
     start = std::chrono::steady_clock::now();
-    for (size_t i = 0; i < corellatorOutput.size(); i++)
+    for (size_t i = 0; i < rxSignalSize; i++)
     {
         if(corellatorOutput[i] > max)
         {
@@ -175,18 +180,29 @@ BOOST_AUTO_TEST_CASE(CorrelatorTest)
     // Check if the correlator max output is where the symbol was inserted
     BOOST_CHECK_MESSAGE( (peakIndex == symbolStart), 
     "Symbol start has not been detected correctly, The max correlation occurs at index =  " << peakIndex );  
-        
+
+
+    start = std::chrono::steady_clock::now();
+    for(size_t i = 0; i < symbolSize; i++)
+    {
+        corellatorOutput[i] = detector.ExecuteCorrelator(rxSignal, i);
+    }
+    end = std::chrono::steady_clock::now();
+
+    std::cout << "symbolSize Cross-Corellator elapsed time: "
+    << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+    << " ns" << std::endl;   
 }
 
 BOOST_AUTO_TEST_CASE(SymbolStartTest)
 {
     printf("\nTesting Symbol Start Search...\n");
 
-    size_t nPoints = 512;
+    size_t nPoints = 1024;
     size_t symbolSize = nPoints*2;
-    size_t prefixSize = (int) (symbolSize / 8);
+    size_t prefixSize = (int) (symbolSize / 4);
     size_t symbolSizeWithPrefx = symbolSize + prefixSize;
-    size_t pilotToneStep = 8;
+    size_t pilotToneStep = 16;
     double pilotToneAmplitude = 2.0;
     size_t energyDispersalSeed = 10;
     size_t bitsPerSymbol = 2;
@@ -206,9 +222,15 @@ BOOST_AUTO_TEST_CASE(SymbolStartTest)
     size_t nMaxEncodedBytes = (int)((nAvaiableifftPoints *  bitsPerSymbol)  / 8);
     size_t nData = nMaxEncodedBytes;
 
-    ByteVec txBytes(nData);
-    DoubleVec EncoderOutput(symbolSizeWithPrefx);
-    DoubleVec rxSignal(rxSignalSize);
+    //ByteVec txBytes(nData);
+    //DoubleVec EncoderOutput(symbolSizeWithPrefx);
+    //DoubleVec rxSignal(rxSignalSize);
+
+    uint8_t * txBytes = (uint8_t*) calloc(nData, sizeof(uint8_t));
+    double * EncoderOutput = (double*) calloc(symbolSizeWithPrefx, sizeof(double));
+    //double * corellatorOutput = (double*) calloc(rxSignalSize, sizeof(double));
+    double * rxSignal = (double*) calloc(rxSignalSize, sizeof(double));
+
 
     // Initialize Encoder objects
     QamModulator qam(nPoints, pilotToneStep, pilotToneAmplitude, energyDispersalSeed, bitsPerSymbol);
@@ -235,7 +257,8 @@ BOOST_AUTO_TEST_CASE(SymbolStartTest)
     AddCyclicPrefix(EncoderOutput, symbolSize , prefixSize);
 
     // Copy the symbol with prefix to Rx signal array
-    std::copy(EncoderOutput.begin(), EncoderOutput.begin()+symbolSizeWithPrefx, rxSignal.begin()+symbolStart);
+    //std::copy(EncoderOutput.begin(), EncoderOutput.begin()+symbolSizeWithPrefx, rxSignal.begin()+symbolStart);
+    memcpy(&rxSignal[symbolStart], &EncoderOutput[0], sizeof(double)*symbolSizeWithPrefx);
     // Check if the symbol with prefix has been copied correctly
     for(size_t i = 0 ; i < symbolSizeWithPrefx ; i++)
     {
@@ -245,17 +268,29 @@ BOOST_AUTO_TEST_CASE(SymbolStartTest)
         }
     }
 
-    size_t CoarseSearchIndex = 0;
+    long int CoarseSearchIndex = -1;
+    size_t counter = 0;
     auto start = std::chrono::steady_clock::now();
-    CoarseSearchIndex = detector.CoarseSearch(rxSignal);
+    while(CoarseSearchIndex == -1)
+    {
+        CoarseSearchIndex = detector.CoarseSearch(&rxSignal[counter*symbolSizeWithPrefx]);
+        counter++;
+        if(counter == 9)
+        {
+            break;
+        }
+    }
+    
     auto end = std::chrono::steady_clock::now();
+    std::cout << "counter = " << counter << std::endl;   
+    CoarseSearchIndex += ((counter-1)*symbolSizeWithPrefx);
 
     std::cout << "Coarse Search elapsed time: "
     << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
     << " ns" << std::endl;   
   
     // Check if the correlator max output is where the symbol was inserted
-    BOOST_CHECK_MESSAGE( (CoarseSearchIndex == symbolStart), 
+    BOOST_CHECK_MESSAGE( ((size_t)CoarseSearchIndex == symbolStart), 
     "Symbol start has not been detected correctly, The peak occurs at index: " << CoarseSearchIndex );
 
     printf("Coarse Search Index = %lu\n", CoarseSearchIndex);

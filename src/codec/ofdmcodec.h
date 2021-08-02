@@ -48,13 +48,15 @@ class OFDMCodec {
 public: 
 
 	OFDMCodec(OFDMSettings settingsStruct) :
-        m_Settings(settingsStruct),
         m_fft(settingsStruct.nPoints, settingsStruct.type, settingsStruct.pilotToneStep),
+        m_Settings(settingsStruct),
         m_NyquistModulator(settingsStruct.nPoints, ( settingsStruct.type == +1 ) ?  m_fft.out : m_fft.in),
         m_detector(settingsStruct.nPoints, settingsStruct.cyclicPrefixSize, &m_fft, &m_NyquistModulator),
         m_qam(settingsStruct.nPoints, settingsStruct.pilotToneStep,  settingsStruct.pilotToneAmplitude, settingsStruct.EnergyDispersalSeed, settingsStruct.QAMSize)
     {
-
+        prefixedSymbolSize = ((m_Settings.nPoints * 2) + m_Settings.cyclicPrefixSize);
+        rxBuffer = (double*) calloc((prefixedSymbolSize*2),sizeof(double));
+        m_encodedSymbolVec.resize(prefixedSymbolSize);
 	}
 
     /**
@@ -63,24 +65,30 @@ public:
 	*/
 	~OFDMCodec()
 	{
-
+        free(rxBuffer);
 	}
-
-
     // Encoding Related Functions //
-    DoubleVec Encode(const ByteVec &input, size_t nBytes);
+    void Encode(const uint8_t *input, double *output, size_t nBytes);
     // Decode Related Functions //
-    ByteVec Decode(const DoubleVec &input, size_t nBytes);
+    void Decode(const double *input, uint8_t *output, size_t nBytes);
+
+    size_t ProcessRxBuffer(const double *input, uint8_t *output);
+    void ProcessTxBuffer(const uint8_t *input, double *txBuffer, size_t nBytes);
 
     const OFDMSettings & GetSettings() const;
+    ofdmFFT m_fft;
 
 private:
     // ofdm related objects
     OFDMSettings m_Settings;
-	ofdmFFT m_fft;
+	
     NyquistModulator m_NyquistModulator;
     Detector m_detector;
     QamModulator m_qam;
+
+    size_t prefixedSymbolSize;
+    DoubleVec m_encodedSymbolVec;
+	double *rxBuffer; // This buffer contains the ADC samples and holds 2x symbolSizeWithPrefix samples
 
 };
 

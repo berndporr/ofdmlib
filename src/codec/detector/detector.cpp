@@ -9,28 +9,31 @@
 #include <cstddef>
 
 
+
+Detector::Detector(size_t nPoints, size_t prefixSize, ofdmFFT *fft, NyquistModulator *nyquist) :
+			m_configured(0),
+			m_nPrefix(prefixSize),
+			m_threshold(0.1), //  0.9 TODO: Calibration function which listens to the noise and sets this value
+			m_startOffset(0),
+			m_symbolSize(nPoints*2),
+			m_SearchRange(25),
+			pFFT(fft),
+			pNyquistModulator(nyquist)
+	{
+		m_prefixedSymbolSize = m_symbolSize + m_nPrefix;
+	}
+
+
 /**
-* Configures the AutoCorrelator object 
-* by setting the number of expected sizes and pointers 
-* to the Rx signal.
-* 
-* @param nPoints 
-* 
-* @return 0 on success, else error number
+* Destructor 
+* Runs close function.
 *
 */
-int Detector::Configure(size_t fftPoints, size_t prefixSize, ofdmFFT *fft, NyquistModulator* nyquist)
-{   
-    // Set variables
-    m_nPrefix = prefixSize;
-    m_symbolSize = fftPoints*2;
-    m_threshold = 0.8;
-    m_configured = 1;
-    m_SearchRange = 25;
-    pFFT = fft;
-	pNyquistModulator = nyquist;
-    return 0;
+Detector::~Detector()
+{
+
 }
+
 
 /**
 * Computes correlation in time domain.
@@ -43,7 +46,7 @@ int Detector::Configure(size_t fftPoints, size_t prefixSize, ofdmFFT *fft, Nyqui
 * @return correlation result
 *
 */
-double Detector::ExecuteCorrelator(const DoubleVec &input, size_t prefixOffset)
+double Detector::ExecuteCorrelator(const double *input, size_t prefixOffset)
 {
     // Initialize output variable
     double correlation = 0;
@@ -72,23 +75,23 @@ double Detector::ExecuteCorrelator(const DoubleVec &input, size_t prefixOffset)
 * @return symbol start(integer) index.
 *
 */
-size_t Detector::FindSymbolStart(const DoubleVec &input, size_t nBytes)
+long int Detector::FindSymbolStart(const double *input, size_t nBytes)
 {   
-    size_t coarseStart = 0;
+    long int  coarseStart = 0;
     size_t symbolStart = 0;
 
     // Coarse search
     coarseStart = CoarseSearch(input);
-    coarseStart += m_nPrefix;
-
     if(coarseStart >= 0)
     {
+        // Add prefix size to get the actual symbol start 
+        coarseStart += m_nPrefix;
         // Pilot Tone Search
         symbolStart = FineSearch(input, coarseStart, nBytes);
-        //symbolStart = CoarseStart;
+        // Return symbol start
+        return symbolStart;
     }
-    // Return Symbol start
-    return symbolStart;
+    return -1;
 }
 
 
@@ -102,12 +105,12 @@ size_t Detector::FindSymbolStart(const DoubleVec &input, size_t nBytes)
 * @return fine symbol start index, else -1
 *
 */
-size_t Detector::FineSearch(const DoubleVec &buff, size_t coarseStart, size_t nbytes)
+size_t Detector::FineSearch(const double *buff, size_t coarseStart, size_t nbytes)
 {
-    double min = 100000;
+    double min = 100000000;
     double sumOfImag = 0.0;
     int lowestImgIndex = 0;
-
+    
     size_t startIndex = 0;
     // Restric start index of fine search to 0th element
     if( startIndex >= 0)
@@ -149,7 +152,7 @@ size_t Detector::FineSearch(const DoubleVec &buff, size_t coarseStart, size_t nb
 * @return symbol start(integer) index, else -1
 *
 */
-size_t Detector::CoarseSearch(const DoubleVec &input) // change return type to 
+long int Detector::CoarseSearch(const double *input)
 {
     bool startNotFound = true;
     double correlation = 0;
@@ -159,13 +162,15 @@ size_t Detector::CoarseSearch(const DoubleVec &input) // change return type to
     size_t maxValueIndex = 0;
 
     // While the start of the symbol has not been found
-    while(startNotFound) // Maybe set maximum itterations?
+    while(startNotFound)
     {
         // Calculate correlation for a given offset
         correlation = ExecuteCorrelator(input, m_startOffset);
+        
         // If the correlation exceeds the threshold
         if(correlation >= m_threshold)
         {
+            //std::cout << "correlation: " << correlation << std::endl;
             // Set the flag to true
             thresholdExceeded = true;
             // Check if the value is higher than current max
@@ -182,6 +187,7 @@ size_t Detector::CoarseSearch(const DoubleVec &input) // change return type to
         // If the sample value falls below threshold, and it was previously exceeded
         if((correlation <= m_threshold) && (thresholdExceeded  == true) )
         {
+            m_startOffset = 0;
             // Symbol start has been found
             startNotFound = false;
             // return the index at which the max value has occured
@@ -194,27 +200,12 @@ size_t Detector::CoarseSearch(const DoubleVec &input) // change return type to
         m_startOffset++;
 
         // TODO: Need to add extra logic to tell the function when the whole buffer has been searched
-        if( m_startOffset == input.size() )
+        if( m_startOffset == m_prefixedSymbolSize) // TODO: put in actual rxbuffer size that is being searched
         {
             m_startOffset = 0;
             // Whole buffer searched, no symbol has been detected
             return -1;
         }
     }
-    return 0;
-}
-
-
-/**
-* Sets the buffer pointer to null, variables and flasgs to zero
-* 
-* @return 0 on success, else error number
-*
-*/    
-int Detector::Close()
-{   
-    m_nPrefix = 0;
-    m_symbolSize = 0;
-    m_configured = 0;
-    return 0;
+    return -1;
 }

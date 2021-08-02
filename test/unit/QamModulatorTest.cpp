@@ -47,11 +47,18 @@ BOOST_AUTO_TEST_CASE(QamModToDemod)
     size_t nData = nMaxEncodedBytes;
     double pilotToneAmplitude = 2.0;
 
+    std::cout << "nMaxEncodedBytes = " << nMaxEncodedBytes << std::endl;
     // Setup random float generator
     srand( (unsigned)time( NULL ) );
 
-    std::vector<unsigned char> TxCharArray(nData);
-    std::vector<unsigned char> RxCharArray(nData);
+    //std::vector<unsigned char> TxCharArray(nData);
+    //std::vector<unsigned char> RxCharArray(nData);
+
+    uint8_t * TxCharArray = (uint8_t*) calloc(nData, sizeof(uint8_t));
+    uint8_t * RxCharArray = (uint8_t*) calloc(nData, sizeof(uint8_t));
+    //double * QamOutput = (double*) calloc(nPoints*2, sizeof(double));
+    //double * rxSignal = (double*) calloc(symbolSize*10, sizeof(double));
+
 
     for(size_t i = 0; i < nData; i++ )
     {

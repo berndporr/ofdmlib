@@ -29,10 +29,8 @@
 * @return vector containing encoded symbol 
 *
 */
-DoubleVec OFDMCodec::Encode(const ByteVec &input, size_t nBytes)
+void OFDMCodec::Encode(const uint8_t *input, double *output, size_t nBytes)
 {
-    DoubleVec output;
-    output.resize(m_Settings.nPoints*2 + m_Settings.cyclicPrefixSize);
     // QAM Encode data block
     m_qam.Modulate(input, (DoubleVec &) m_fft.in, nBytes);
     // Transform data and put into the 
@@ -41,8 +39,20 @@ DoubleVec OFDMCodec::Encode(const ByteVec &input, size_t nBytes)
     m_NyquistModulator.Modulate( output, GetSettings().cyclicPrefixSize);
     // Add cyclic prefix
     AddCyclicPrefix(output, GetSettings().nPoints*2 , GetSettings().cyclicPrefixSize);
-    return output;
 }
+
+void OFDMCodec::ProcessTxBuffer(const uint8_t *input, double *txBuffer, size_t nBytes)
+{
+    // QAM Encode data block
+    m_qam.Modulate(input, (DoubleVec &) m_fft.in, nBytes);
+    // Transform data and put into the 
+    m_fft.ComputeTransform( (fftw_complex *) &txBuffer[GetSettings().cyclicPrefixSize]);
+    // Run nyquist modulator
+    m_NyquistModulator.Modulate( txBuffer, GetSettings().cyclicPrefixSize);
+    // Add cyclic prefix
+    AddCyclicPrefix(txBuffer, GetSettings().nPoints*2 , GetSettings().cyclicPrefixSize);
+}
+
 
 
 // Decoding Related Functions //
@@ -58,20 +68,61 @@ DoubleVec OFDMCodec::Encode(const ByteVec &input, size_t nBytes)
 * @return byte vector containing decoded bytes
 *
 */
-ByteVec OFDMCodec::Decode(const DoubleVec &input, size_t nBytes)
+void OFDMCodec::Decode(const double *input, uint8_t *output, size_t nBytes)
 {
-    // Create output vector
-    ByteVec output(nBytes);
     // Time sync to first symbol start
-    size_t symbolStart = 0;
-    symbolStart = m_detector.FindSymbolStart(input, nBytes);
-    // Run Data thrgough nyquist demodulator
-    m_NyquistModulator.Demodulate(input, symbolStart);
-    // Compute FFT & Normalise
-    m_fft.ComputeTransform();
-    // Normalise FFT
-    m_fft.Normalise();
-    // Decode QAM encoded fft points and place in the destination buffer
-    m_qam.Demodulate( (DoubleVec &) m_fft.out, output, nBytes);
-    return output;
+    size_t symbolStart = -1;
+    if( symbolStart >= 0)
+    {
+        symbolStart = m_detector.FindSymbolStart(input, nBytes);
+        // Run Data thrgough nyquist demodulator
+        m_NyquistModulator.Demodulate(input, symbolStart);
+        // Compute FFT & Normalise
+        m_fft.ComputeTransform();
+        // Normalise FFT
+        m_fft.Normalise();
+        // Decode QAM encoded fft points and place in the destination buffer
+        m_qam.Demodulate( (DoubleVec &) m_fft.out, output, nBytes);
+    }
+}
+
+
+/**
+* Decodes One OFDM Symbol
+*
+* @param input pointer to the rx buffer
+*
+* @param nBytes number of bytes encoded in the symbol
+*
+* @return byte vector containing decoded bytes
+*
+*/
+size_t OFDMCodec::ProcessRxBuffer(const double *input, uint8_t *output)
+{    
+    // Create output vector
+    size_t nBytes = 120;        // !!!!!!!!!!! Make this variable
+    long int symbolStart = -1;
+    // Copy Rx Buffer
+    memcpy(&rxBuffer[prefixedSymbolSize], &input[0], prefixedSymbolSize*sizeof(double));
+    // Find Symbol Start
+    symbolStart = m_detector.FindSymbolStart(rxBuffer, nBytes);
+    // If symbol start detected
+    if (symbolStart >= 0)
+    {
+        std::cout << "Symbol Start Found = " << symbolStart << std::endl;
+        // Run Data thrgough nyquist demodulator
+        m_NyquistModulator.Demodulate(rxBuffer, symbolStart);
+        // Compute FFT & Normalise
+        m_fft.ComputeTransform();
+        // Normalise FFT
+        m_fft.Normalise();
+        // Decode QAM encoded fft points and place in the destination buffer
+        m_qam.Demodulate( (DoubleVec &) m_fft.out, output, nBytes);
+        // Copy Residue for next itteration
+        memcpy(&rxBuffer[0], &rxBuffer[prefixedSymbolSize], prefixedSymbolSize*sizeof(double));
+        return 120;
+    }
+    // Copy Residue for next itteration
+    memcpy(&rxBuffer[0], &rxBuffer[prefixedSymbolSize], prefixedSymbolSize*sizeof(double));
+    return 0;
 }

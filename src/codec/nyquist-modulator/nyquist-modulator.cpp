@@ -106,7 +106,7 @@ int NyquistModulator::Modulate(DoubleVec &vectorBuffer)
 * @return 0 on success, else error number
 * 
 */  
-void NyquistModulator::Modulate(DoubleVec &ifftOutput, const size_t prefixSize)
+void NyquistModulator::Modulate(double *ifftOutput, const size_t prefixSize)
 {
     // If the nPoints is even
     if( (m_nPoints % 2) == 0)
@@ -152,7 +152,7 @@ void NyquistModulator::Modulate(DoubleVec &ifftOutput, const size_t prefixSize)
 * @return 0 on success, else error number
 *
 */   
-void NyquistModulator::Demodulate(const DoubleVec &vectorBuffer, size_t offset)
+void NyquistModulator::Demodulate(const double *vectorBuffer, size_t offset)
 {
     // If the nPoints is even
     if(m_nPoints % 2 == 0)
