@@ -39,52 +39,27 @@ public:
 	/**
 	* Constructor runs setup function and sets the setup flag.
 	* 
-	* @param nPoints Number of FFT / IFFT coefficients
-	* @param pComplex pointer to the complex buffer output of IFFT or input to FFT
-	* @param pDouble pointer to double array
+	* @param OFDMSettings
 	*
 	*/
-	NyquistModulator(const size_t nPoints, fftw_complex *pComplex) :
-	m_configured(0),
-	m_nPoints(nPoints),
-	m_symbolSize(m_nPoints*2),
-	pComplexBuffer(pComplex)
-	{
-		//Configure(nPoints, pComplex);
-	}
-	
+	NyquistModulator(OFDMSettings &settings);
+
 
 	/**
 	* Destructor 
 	* Runs close function.
 	*
 	*/
-	~NyquistModulator()
-	{
-		//Close();
-	}
+	~NyquistModulator();
 
-	int Configure(size_t fftPoints, fftw_complex *pComplex);
-	int Close();
-	void Modulate(double *ifftOutput, const size_t prefixSize);
-	void Demodulate(const double *vectorBuffer, const size_t offset);
+
+	void Modulate(double *ifftOutput);
+	void Demodulate(const double *rxBuffer, fftw_complex *pFFTInput, const size_t symbolStart);
+
 
 private:
 
-	int m_configured;
-	size_t m_nPoints;
-	size_t m_symbolSize;
-
-	/// Input buffer for the modulator / Output buffer for demodulator.
-	/// This must point to the Output of IFFT for modulator and the
-	/// input of FFT for demodulator.
-	fftw_complex *pComplexBuffer; 
-
-
-	/// Output buffer for the Demodulator / Input buffer for demodulator.
-	/// This must point to the desired tx destination buffer for modulator
-	///  and the sampled signal for demodulator.
-	//DoubleVec &vectorBuffer; 
+	OFDMSettings &m_ofdmSettings;
 
 };
 

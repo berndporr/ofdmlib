@@ -29,8 +29,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#define BITS_IN_BYTE 8
-#define BITS_PER_FREQ_POINT 2
+#define BITS_IN_BYTE            8
+#define BITS_PER_FREQ_POINT     2
+#define BYTE_MAX                255
 
 /**
  * @brief 4-QAM modulator object,
@@ -41,12 +42,8 @@ class QamModulator {
 
 public: 
 
-	QamModulator(size_t fftPoints, size_t pilotToneStep, double pilotToneAmplitude, size_t energyDispersalSeed, size_t QAM) :
-        m_nFFT(fftPoints),
-        m_pilotToneStep(pilotToneStep),
-        m_pilotToneAmplitude(pilotToneAmplitude),
-        m_EnergyDispersalSeed(energyDispersalSeed),
-        m_BitsPerSymbol(QAM)
+	QamModulator(OFDMSettings &settings) :
+        m_ofdmSettings(settings)
     {
 
 	}
@@ -64,12 +61,7 @@ public:
 
 private:
 
-    size_t m_nFFT;
-    size_t m_pilotToneStep;
-    double m_pilotToneAmplitude;
-    size_t m_EnergyDispersalSeed;
-    size_t m_BitsPerSymbol;
-
+    OFDMSettings &m_ofdmSettings;
 };
 
 
@@ -92,9 +84,9 @@ inline void QamModulator::Modulate(const uint8_t *input, DoubleVec &output, size
 {
     // Compute avaiable points for ifft
     // This depends on the size of the ifft and pilot tone step
-    size_t nAvaiableifftPoints = (m_nFFT - (int)(m_nFFT/m_pilotToneStep));
+    size_t nAvaiableifftPoints = (m_ofdmSettings.nFFTPoints - (size_t)(m_ofdmSettings.nFFTPoints/m_ofdmSettings.PilotToneDistance));
     // Compute the equivelent of avaiable data bytes per symbol
-    size_t nMaxEncodedBytes = (int)((nAvaiableifftPoints *  m_BitsPerSymbol)  / BITS_IN_BYTE);
+    size_t nMaxEncodedBytes = (size_t)((nAvaiableifftPoints *  BITS_PER_FREQ_POINT)  / BITS_IN_BYTE);
 
     // Check if the the number of bytes expected be demodulated is within one symbol
     if(nMaxEncodedBytes < nBytes)
@@ -102,18 +94,18 @@ inline void QamModulator::Modulate(const uint8_t *input, DoubleVec &output, size
         std::cout << "QamModulator: Modulate: Error: Expected # of Bytes in this symbol exceeds the possible max! = " << nBytes << std::endl;
         return;
     }
-    size_t nPilots = (size_t) (((nBytes*BITS_IN_BYTE)/BITS_PER_FREQ_POINT)/m_pilotToneStep);
+    size_t nPilots = (size_t) (((nBytes*BITS_IN_BYTE)/BITS_PER_FREQ_POINT)/m_ofdmSettings.PilotToneDistance);
     // Compute frequency coefficient index used
     // Assume spectrum is centred symmetrically around DC and depends on nBytes
-    size_t startIndex = (size_t) ((m_nFFT) - (nPilots/ 2) - ((nBytes * 4) / 2)); // Pilot tones are set incorrectly 
+    size_t startIndex = (size_t) ((m_ofdmSettings.nFFTPoints) - (nPilots/ 2) - ((nBytes * 4) / 2)); // Pilot tones are set incorrectly 
     //size_t startIndex = (int) ((m_nFFT) - (((m_nFFT) / m_pilotToneStep) / 2) - ((nBytes * 4) / 2)); // Pilot tones are set incorrectly 
 
     // Start insertion with negative frequencies
     size_t ifftPointCounter = startIndex;
-    size_t pilotCounter =  (int) (m_pilotToneStep / 2); // divide this by to when starting with -ve frequencies
+    size_t pilotCounter =  (int) (m_ofdmSettings.PilotToneDistance / 2); // divide this by to when starting with -ve frequencies
 
-    // Set pseudo-random number generator
-    srand(m_EnergyDispersalSeed);
+    // Set-up pseudo-random number generator
+    srand(m_ofdmSettings.EnergyDispersalSeed);
 
     uint8_t dataByte = 0;
     uint8_t bitMask = 0x01;
@@ -122,9 +114,9 @@ inline void QamModulator::Modulate(const uint8_t *input, DoubleVec &output, size
     size_t byteCounter = 0;
     while(byteCounter < nBytes)
     {
-        // Perform energy dispersal by xor-ing the data byte
+        // Perform energy dispersal by xor-ing the to be encoded data byte
         dataByte = input[byteCounter];
-        dataByte ^= rand() % 255;
+        dataByte ^= rand() % BYTE_MAX;
         // Reset bit mask
         bitMask = 0x01;
         // Reset fft point insertion counter 
@@ -136,9 +128,9 @@ inline void QamModulator::Modulate(const uint8_t *input, DoubleVec &output, size
             if(pilotCounter == 0)
             {
                 // Reset counter
-                pilotCounter =  m_pilotToneStep;
+                pilotCounter =  m_ofdmSettings.PilotToneDistance;
                 // Insert Pilot Tone         
-                output[(ifftPointCounter*2)] = m_pilotToneAmplitude;
+                output[(ifftPointCounter*2)] = m_ofdmSettings.PilotToneAmplitude;
                 output[(ifftPointCounter*2)+1] = 0;
 
             }
@@ -161,7 +153,7 @@ inline void QamModulator::Modulate(const uint8_t *input, DoubleVec &output, size
             // Increment ifft point counter to indicate complex point has been used
             ifftPointCounter++;
             // Check if the counter exceeds the total number of points
-            if(ifftPointCounter == m_nFFT)
+            if(ifftPointCounter == m_ofdmSettings.nFFTPoints)
             {
                 // wrap to positive frequencies
                 ifftPointCounter = 0;
@@ -193,8 +185,8 @@ inline void QamModulator::Modulate(const uint8_t *input, DoubleVec &output, size
 */
 inline void QamModulator::Demodulate(const DoubleVec &input, uint8_t *output, size_t nBytes)
 {
-    size_t nAvaiableifftPoints = (m_nFFT - (int)(m_nFFT/m_pilotToneStep));
-    size_t nMaxEncodedBytes = (int)((nAvaiableifftPoints *  m_BitsPerSymbol)  / BITS_IN_BYTE);
+    size_t nAvaiableifftPoints = (m_ofdmSettings.nFFTPoints - (size_t)(m_ofdmSettings.nFFTPoints/m_ofdmSettings.PilotToneDistance));
+    size_t nMaxEncodedBytes = (size_t)((nAvaiableifftPoints *  BITS_PER_FREQ_POINT)  / BITS_IN_BYTE);
 
     // Check if the the number of bytes expected be demodulated is within one symbol
     if(nMaxEncodedBytes < nBytes)
@@ -203,18 +195,18 @@ inline void QamModulator::Demodulate(const DoubleVec &input, uint8_t *output, si
         return;
     }
 
-    size_t nPilots = (size_t) (((nBytes*BITS_IN_BYTE)/BITS_PER_FREQ_POINT)/m_pilotToneStep);
+    size_t nPilots = (size_t) (((nBytes*BITS_IN_BYTE)/BITS_PER_FREQ_POINT)/m_ofdmSettings.PilotToneDistance);
     // Compute frequency coefficient index used
     // Assume spectrum is centred symmetrically around DC and depends on nBytes
-    size_t startIndex = (size_t) ((m_nFFT) - (nPilots/ 2) - ((nBytes * 4) / 2)); // Pilot tones are set incorrectly 
+    size_t startIndex = (size_t) ((m_ofdmSettings.nFFTPoints) - (nPilots/ 2) - ((nBytes * 4) / 2)); // Pilot tones are set incorrectly 
     //size_t startIndex = (int) ((m_nFFT) - (((m_nFFT) / m_pilotToneStep) / 2) - ((nBytes * 4 )/ 2));
 
     // Start insertion with negative frequencies
     size_t fftPointCounter = startIndex;
-    size_t pilotCounter = (int) (m_pilotToneStep / 2); // divide this by two when starting with -ve frequencies
+    size_t pilotCounter = (size_t) (m_ofdmSettings.PilotToneDistance / 2); // divide this by two when starting with -ve frequencies
 
     // Set pseudo-random number generator
-    srand(m_EnergyDispersalSeed);
+    srand(m_ofdmSettings.EnergyDispersalSeed);
     uint8_t bitMask = 0x01;
 
     size_t insertionCounter = 0;
@@ -236,7 +228,7 @@ inline void QamModulator::Demodulate(const DoubleVec &input, uint8_t *output, si
             {
                 // Reset Counter
                 // No need to process this in any way
-                pilotCounter = m_pilotToneStep;
+                pilotCounter = m_ofdmSettings.PilotToneDistance;
             }
             // This point is not pilot tone
             // Decode QAM encoded complex point
@@ -268,14 +260,14 @@ inline void QamModulator::Demodulate(const DoubleVec &input, uint8_t *output, si
             // Increment fft point counter
             fftPointCounter++;
             // Check if fft exceeds the limit of points
-            if(fftPointCounter == m_nFFT)
+            if(fftPointCounter == m_ofdmSettings.nFFTPoints)
             {
                 // Roll back to positive frequencies
                 fftPointCounter = 0;
             }
         }
         // Recover original data by xor-ing input byte with random value
-        output[byteCounter] ^= rand() % 255;
+        output[byteCounter] ^= rand() % BYTE_MAX;
     }
 }
 #endif

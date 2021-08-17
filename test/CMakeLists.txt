@@ -15,7 +15,6 @@ add_executable (FourierTransformsTest unit/FourierTransformsTest.cpp)
 add_executable (NyquistModulatorTest unit/NyquistModulatorTest.cpp)  
 add_executable (DetectorTest unit/DetectorTest.cpp) 
 add_executable (QamModulatorTest unit/QamModulatorTest.cpp) 
-add_executable (TrxTest unit/TrxTest.cpp) 
 
 # Integration Tests
 add_executable (IntegrationTest integration/IntegrationTests.cpp)
@@ -60,16 +59,6 @@ target_link_libraries (QamModulatorTest
 )
 
 
-target_link_libraries (TrxTest
-                      ofdmlib
-                      fftw3
-                      rtaudio
-                      ${Boost_FILESYSTEM_LIBRARY}
-                      ${Boost_SYSTEM_LIBRARY}
-                      ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
-                      ${Boost_LIBRARIES}
-)
-
 # Link libraries to integration tests
 target_link_libraries (IntegrationTest
                       ofdmlib
@@ -88,7 +77,6 @@ add_test (NAME Fourier_Transforms_Test COMMAND FourierTransformsTest)
 add_test (NAME Nyquist_Modulator_Test COMMAND NyquistModulatorTest)
 add_test (NAME Detector_Test COMMAND DetectorTest)
 add_test (NAME QAM_Modulator_Test COMMAND QamModulatorTest)
-add_test (NAME Trx_Test COMMAND TrxTest)
 
 # Add integration tests
 add_test (NAME Integration_Test COMMAND IntegrationTest)

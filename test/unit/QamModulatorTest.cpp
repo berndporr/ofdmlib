@@ -1,4 +1,4 @@
-#define BOOST_TEST_MODULE FourierTransformTest
+#define BOOST_TEST_MODULE QamModulatorTest
 #include <boost/test/unit_test.hpp>
 
 // For IO
@@ -38,36 +38,35 @@ BOOST_AUTO_TEST_CASE(QamModToDemod)
     printf("\nTesting QAM Modulation to Demodulation...\n");
     printf("\nMdoulator:\n");
 
-    size_t nPoints = 512;
-    size_t pilotToneStep = 8;
-    size_t energyDispersalSeed = 10;
-    size_t bitsPerSymbol = 2;
-    size_t nAvaiableifftPoints = (nPoints - (int)(nPoints/pilotToneStep));
-    size_t nMaxEncodedBytes = (int)((nAvaiableifftPoints *  bitsPerSymbol)  / 8);
+    // OFDM Codec Settings
+    OFDMSettings encoderSettings;
+    encoderSettings.type = FFTW_BACKWARD;
+    encoderSettings.EnergyDispersalSeed = 10;
+    encoderSettings.nFFTPoints = 1024; 
+    encoderSettings.PilotToneDistance = 16; 
+    encoderSettings.PilotToneAmplitude = 2.0; 
+    encoderSettings.QAMSize = 2; 
+    encoderSettings.PrefixSize = (int) ((encoderSettings.nFFTPoints*2)/4); // 1/4th of symbol
+
+    size_t nAvaiableifftPoints = (encoderSettings.nFFTPoints - (size_t)(encoderSettings.nFFTPoints/encoderSettings.PilotToneDistance));
+    size_t nMaxEncodedBytes = (int)((nAvaiableifftPoints *  BITS_PER_FREQ_POINT)  / BITS_IN_BYTE);
     size_t nData = nMaxEncodedBytes;
-    double pilotToneAmplitude = 2.0;
 
     std::cout << "nMaxEncodedBytes = " << nMaxEncodedBytes << std::endl;
     // Setup random float generator
     srand( (unsigned)time( NULL ) );
 
-    //std::vector<unsigned char> TxCharArray(nData);
-    //std::vector<unsigned char> RxCharArray(nData);
-
     uint8_t * TxCharArray = (uint8_t*) calloc(nData, sizeof(uint8_t));
     uint8_t * RxCharArray = (uint8_t*) calloc(nData, sizeof(uint8_t));
-    //double * QamOutput = (double*) calloc(nPoints*2, sizeof(double));
-    //double * rxSignal = (double*) calloc(symbolSize*10, sizeof(double));
-
 
     for(size_t i = 0; i < nData; i++ )
     {
         TxCharArray[i] = (unsigned char) rand() % 255;
     }
 
-    DoubleVec QamOutput(nPoints*2);
+    DoubleVec QamOutput(encoderSettings.nFFTPoints*2);
 
-    QamModulator qam(nPoints, pilotToneStep, pilotToneAmplitude, energyDispersalSeed, bitsPerSymbol);
+    QamModulator qam(encoderSettings);
 
     auto start = std::chrono::steady_clock::now();
     qam.Modulate(TxCharArray, QamOutput, nData);

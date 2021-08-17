@@ -29,3 +29,9 @@ sudo apt-get install libfftw3-dev -y
 sudo apt-get install libpulse-dev -y
 sudo apt-get install libasound2-dev -y
 sudo apt-get install librtaudio-dev -y
+
+#Matplot++ Dependencies
+sudo apt-get install libjpeg-dev -y
+sudo apt-get install libtiff-dev -y
+sudo apt-get install libpng-dev -y
+sudo apt-get install libblas-dev liblapack-dev -y

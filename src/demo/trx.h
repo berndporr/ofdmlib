@@ -108,6 +108,17 @@ struct OutputData
 
 
 /**
+* Operation mode of the transciever  
+*
+*/
+typedef enum {
+	REAL_TIME	=  0,
+	RECORDING =  1,
+} TRX_OPERATION_MODE;
+
+
+
+/**
  * @brief TRX object, wrapper around the rtaudio API for ofdmlib example use
  * 
  */
@@ -123,7 +134,7 @@ public:
   * @param settingsStruct 
 	*
 	*/
-	AudioTrx(rtAudioSettings audioSettings, OFDMSettings encoderSettings, OFDMSettings decoderSettings);
+	AudioTrx(rtAudioSettings audioSettings, OFDMSettings encoderSettings, OFDMSettings decoderSettings, TRX_OPERATION_MODE operationMode);
 
 
 	/**
@@ -138,6 +149,7 @@ public:
     void StartRxStream();
     void StopRxStream();
 
+    void OpenStreams(size_t mode);
 
     RxCallbackData m_RxCallbackData;   
     TxCallbackData m_TxCallbackData;
@@ -150,7 +162,6 @@ public:
     OFDMCodec m_encoder;
     OFDMCodec m_decoder;
 private:
-
 
     rtAudioSettings m_rtAudioSettings;
 

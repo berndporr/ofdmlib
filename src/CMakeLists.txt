@@ -5,17 +5,20 @@
 
 set( CMAKE_VERBOSE_MAKEFILE on )
 # Specify minimum CMake version
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.14)
 
 # Specify the C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Set the project name and version
-project(ofdmlibDemo VERSION 0.1)
+project(libofdm VERSION 0.5)
 
 # Locate libraries and headers
 find_package(Threads REQUIRED)
+
+find_package (Boost COMPONENTS system filesystem iostreams REQUIRED)
+include_directories( ${Boost_INCLUDE_DIR} )
 
 # Set Include Directories
 set(INCLUDE_DIRS
@@ -31,7 +34,7 @@ set(INCLUDE_DIRS
 
 # Set Source files
 set(SOURCE_FILE    
-   ${CMAKE_CURRENT_SOURCE_DIR}/codec/fft/ofdmfft.cpp 
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/fft/fft.cpp 
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/nyquist-modulator/nyquist-modulator.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/detector/detector.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/utils/gnuplot-iostream.h
@@ -39,11 +42,27 @@ set(SOURCE_FILE
    ${CMAKE_CURRENT_SOURCE_DIR}/demo/trx.cpp
 )
 
+# Fetch Packages
+# But first try to use local packages
+#option(CPM_USE_LOCAL_PACKAGES "Try `find_package` before downloading dependencies" ON)
+
+# Matplot++
+CPMAddPackage(
+    NAME matplotplusplus
+    GITHUB_REPOSITORY alandefreitas/matplotplusplus
+    GIT_TAG origin/master # or whatever tag you want
+)
+
 # Create library
 add_library(ofdmlib SHARED STATIC ${SOURCE_FILE} ) # what about static?
 
 # Include directories so tests can find the files
 target_include_directories(ofdmlib PUBLIC ${INCLUDE_DIRS})
+
+# Link Libraries to ofdmlib 
+target_link_libraries(ofdmlib PUBLIC matplot) # TODO: Change the matplot link in the release version
+
+#target_link_libraries( ofdmlib LINK_PUBLIC ${Boost_LIBRARIES} )
 
 install(TARGETS ofdmlib DESTINATION ${LIB_DIR})
 #install(FILES encoder.h DESTINATION ${DIVISIBLE_INSTALL_INCLUDE_DIR})

@@ -18,6 +18,32 @@
 
 // Encoding Related Functions //
 
+/**
+* Constructor
+*
+*/
+OFDMCodec::OFDMCodec(OFDMSettings settingsStruct) :
+    m_Settings(settingsStruct),
+    m_fft(m_Settings),
+    m_NyquistModulator(m_Settings), // ( settingsStruct.type == +1 ) ?  m_fft.out : m_fft.in
+    m_detector(m_Settings, m_fft, m_NyquistModulator),
+    m_qam(m_Settings)
+{
+    m_PrefixedSymbolSize = ((m_Settings.nFFTPoints * 2) + m_Settings.PrefixSize);
+    // Create Rx Buffer capable of holding maximum of twice the prefixed symbol size samples
+    rxBuffer = (double*) calloc((m_PrefixedSymbolSize*2),sizeof(double));
+}
+
+
+/**
+* Destructor 
+*
+*/
+OFDMCodec::~OFDMCodec()
+{
+    free(rxBuffer);
+}
+
 
 /**
 * Encodes one OFDM Symbol
@@ -34,11 +60,11 @@ void OFDMCodec::Encode(const uint8_t *input, double *output, size_t nBytes)
     // QAM Encode data block
     m_qam.Modulate(input, (DoubleVec &) m_fft.in, nBytes);
     // Transform data and put into the 
-    m_fft.ComputeTransform( (fftw_complex *) &output[GetSettings().cyclicPrefixSize]);
+    m_fft.ComputeTransform( (fftw_complex *) &output[GetSettings().PrefixSize]);
     // Run nyquist modulator
-    m_NyquistModulator.Modulate( output, GetSettings().cyclicPrefixSize);
+    m_NyquistModulator.Modulate(&output[GetSettings().PrefixSize]);
     // Add cyclic prefix
-    AddCyclicPrefix(output, GetSettings().nPoints*2 , GetSettings().cyclicPrefixSize);
+    AddCyclicPrefix(output, GetSettings().nFFTPoints*2 , GetSettings().PrefixSize);
 }
 
 void OFDMCodec::ProcessTxBuffer(const uint8_t *input, double *txBuffer, size_t nBytes)
@@ -46,11 +72,11 @@ void OFDMCodec::ProcessTxBuffer(const uint8_t *input, double *txBuffer, size_t n
     // QAM Encode data block
     m_qam.Modulate(input, (DoubleVec &) m_fft.in, nBytes);
     // Transform data and put into the 
-    m_fft.ComputeTransform( (fftw_complex *) &txBuffer[GetSettings().cyclicPrefixSize]);
+    m_fft.ComputeTransform( (fftw_complex *) &txBuffer[GetSettings().PrefixSize]);
     // Run nyquist modulator
-    m_NyquistModulator.Modulate( txBuffer, GetSettings().cyclicPrefixSize);
+    m_NyquistModulator.Modulate(&txBuffer[GetSettings().PrefixSize]);
     // Add cyclic prefix
-    AddCyclicPrefix(txBuffer, GetSettings().nPoints*2 , GetSettings().cyclicPrefixSize);
+    AddCyclicPrefix(txBuffer, GetSettings().nFFTPoints*2 , GetSettings().PrefixSize);
 }
 
 
@@ -76,7 +102,7 @@ void OFDMCodec::Decode(const double *input, uint8_t *output, size_t nBytes)
     {
         symbolStart = m_detector.FindSymbolStart(input, nBytes);
         // Run Data thrgough nyquist demodulator
-        m_NyquistModulator.Demodulate(input, symbolStart);
+        m_NyquistModulator.Demodulate(input, m_fft.in, symbolStart);
         // Compute FFT & Normalise
         m_fft.ComputeTransform();
         // Normalise FFT
@@ -97,21 +123,19 @@ void OFDMCodec::Decode(const double *input, uint8_t *output, size_t nBytes)
 * @return byte vector containing decoded bytes
 *
 */
-size_t OFDMCodec::ProcessRxBuffer(const double *input, uint8_t *output)
+size_t OFDMCodec::ProcessRxBuffer(const double *input, uint8_t *output , size_t nBytes)
 {    
-    // Create output vector
-    size_t nBytes = 120;        // !!!!!!!!!!! Make this variable
     long int symbolStart = -1;
     // Copy Rx Buffer
-    memcpy(&rxBuffer[prefixedSymbolSize], &input[0], prefixedSymbolSize*sizeof(double));
+    memcpy(&rxBuffer[m_PrefixedSymbolSize], &input[0], m_PrefixedSymbolSize*sizeof(double));
     // Find Symbol Start
     symbolStart = m_detector.FindSymbolStart(rxBuffer, nBytes);
     // If symbol start detected
     if (symbolStart >= 0)
     {
-        std::cout << "Symbol Start Found = " << symbolStart << std::endl;
+        //std::cout << "Symbol Start Found = " << symbolStart << std::endl;
         // Run Data thrgough nyquist demodulator
-        m_NyquistModulator.Demodulate(rxBuffer, symbolStart);
+        m_NyquistModulator.Demodulate(rxBuffer, m_fft.in, symbolStart);
         // Compute FFT & Normalise
         m_fft.ComputeTransform();
         // Normalise FFT
@@ -119,10 +143,14 @@ size_t OFDMCodec::ProcessRxBuffer(const double *input, uint8_t *output)
         // Decode QAM encoded fft points and place in the destination buffer
         m_qam.Demodulate( (DoubleVec &) m_fft.out, output, nBytes);
         // Copy Residue for next itteration
-        memcpy(&rxBuffer[0], &rxBuffer[prefixedSymbolSize], prefixedSymbolSize*sizeof(double));
-        return 120;
+        memcpy(&rxBuffer[0], &rxBuffer[m_PrefixedSymbolSize], m_PrefixedSymbolSize*sizeof(double));
+        return nBytes;
     }
-    // Copy Residue for next itteration
-    memcpy(&rxBuffer[0], &rxBuffer[prefixedSymbolSize], prefixedSymbolSize*sizeof(double));
-    return 0;
+    else
+    {
+        // Copy Residue for next itteration
+        memcpy(&rxBuffer[0], &rxBuffer[m_PrefixedSymbolSize], m_PrefixedSymbolSize*sizeof(double));
+        return 0;
+    }
+
 }

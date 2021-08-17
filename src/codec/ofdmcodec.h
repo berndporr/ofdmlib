@@ -22,17 +22,7 @@
 #include "qam-modulator.h"
 #include "common.h"
 
-struct OFDMSettings
-{
-    int type;
-    size_t EnergyDispersalSeed; 
-    size_t nPoints; // Total number of FFT & IFFT coefficients 
-	size_t pilotToneStep; // Pilot Tones
-    double  pilotToneAmplitude; // Pilot Tones
-    size_t guardInterval; // The time between the current and consecutive ofdm symbol
-    size_t QAMSize; // QAM Modulator 
-    size_t cyclicPrefixSize; // Cyclic-Prefix
-};
+
 
 
 /**
@@ -47,54 +37,61 @@ class OFDMCodec {
 
 public: 
 
-	OFDMCodec(OFDMSettings settingsStruct) :
-        m_fft(settingsStruct.nPoints, settingsStruct.type, settingsStruct.pilotToneStep),
-        m_Settings(settingsStruct),
-        m_NyquistModulator(settingsStruct.nPoints, ( settingsStruct.type == +1 ) ?  m_fft.out : m_fft.in),
-        m_detector(settingsStruct.nPoints, settingsStruct.cyclicPrefixSize, &m_fft, &m_NyquistModulator),
-        m_qam(settingsStruct.nPoints, settingsStruct.pilotToneStep,  settingsStruct.pilotToneAmplitude, settingsStruct.EnergyDispersalSeed, settingsStruct.QAMSize)
-    {
-        prefixedSymbolSize = ((m_Settings.nPoints * 2) + m_Settings.cyclicPrefixSize);
-        rxBuffer = (double*) calloc((prefixedSymbolSize*2),sizeof(double));
-        m_encodedSymbolVec.resize(prefixedSymbolSize);
-	}
+    /**
+	* Constructor 
+	*
+	*/
+	OFDMCodec(OFDMSettings settingsStruct);
 
     /**
 	* Destructor 
 	*
 	*/
-	~OFDMCodec()
-	{
-        free(rxBuffer);
-	}
-    // Encoding Related Functions //
+	~OFDMCodec();
+
     void Encode(const uint8_t *input, double *output, size_t nBytes);
-    // Decode Related Functions //
+
     void Decode(const double *input, uint8_t *output, size_t nBytes);
 
-    size_t ProcessRxBuffer(const double *input, uint8_t *output);
+    size_t ProcessRxBuffer(const double *input, uint8_t *output, size_t nBytes);
     void ProcessTxBuffer(const uint8_t *input, double *txBuffer, size_t nBytes);
 
     const OFDMSettings & GetSettings() const;
-    ofdmFFT m_fft;
 
 private:
-    // ofdm related objects
+
     OFDMSettings m_Settings;
-	
-    NyquistModulator m_NyquistModulator;
+
+public:
+
+    FFT m_fft;
+
+private:
+
+	NyquistModulator m_NyquistModulator;
     Detector m_detector;
     QamModulator m_qam;
 
-    size_t prefixedSymbolSize;
-    DoubleVec m_encodedSymbolVec;
-	double *rxBuffer; // This buffer contains the ADC samples and holds 2x symbolSizeWithPrefix samples
+    size_t m_PrefixedSymbolSize;
+
+	// Real-time Rx buffer
+    // Contains the ADC samples and must hold 2x prefixed symbol size samples
+    double *rxBuffer; 
 
 };
 
- inline const OFDMSettings & OFDMCodec::GetSettings() const
- {
-     return m_Settings;
- }
+
+/**
+ * @brief OFDM codec object class
+ * This object encapsulates the encoding 
+ * and decoding functionlaity and settings for each
+ * ofdm related object. It is esentially a wrapper around
+ * all elements that make up ofdm modulation scheme.
+ * 
+ */
+inline const OFDMSettings & OFDMCodec::GetSettings() const
+{
+    return m_Settings;
+}
 
 #endif

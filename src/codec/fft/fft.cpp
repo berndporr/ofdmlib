@@ -5,21 +5,44 @@
 * 
 */
 
+#define BITS_IN_BYTE 8
+#define BITS_PER_FREQ_POINT 2
 
-#include "ofdmfft.h"
+#include "fft.h"
 
+/**
+* Constructor 
+*
+*
+*/
+FFT::FFT(OFDMSettings &settings) :
+    m_ofdmSettings(settings)
+{
+    Configure();
+}
+
+
+/**
+* Destructor 
+*
+*
+*/
+FFT::~FFT()
+{
+    Close();
+}
 
 /**
 * Sets up FFT for specified size, 
 * 
-* @param nPoints Number(uint16_t) of FFT / IFFT coefficients
+* @param nPoints Number of FFT / IFFT coefficients
 * 
 * @param type Specifies whether the object computes FFT or IFFT choices - FFTW_FORWARD(-1) FFTW_BACKWARD(+1)
 *
 * @return 0 on success, else error number
 *
 */
-int ofdmFFT::Configure(size_t nPoints, int type, size_t pilotStep)
+int FFT::Configure()
 {   
     // If object has been configured before
     if(m_configured)
@@ -27,17 +50,23 @@ int ofdmFFT::Configure(size_t nPoints, int type, size_t pilotStep)
         // Destroy fft plan and free allocated memory to buffers
         Close();
     }
-    in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * nPoints);
-    out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * nPoints);
-    // Measure if many of the transforms of the siza are going to be performed
-    // otherwise use FFTW_ESTIMATE 
-    m_fftplan = fftw_plan_dft_1d(nPoints, in, out, type, FFTW_MEASURE); 
+    // Allocate memory for the input & output buffers
+    in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.nFFTPoints);
+    out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.nFFTPoints);
 
-    m_nFFT = nPoints;
-    m_pilotToneStep = pilotStep;
+    FFTin = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.nFFTPoints);
+    FFTout = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.nFFTPoints);
+    
+    IFFTin = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.nFFTPoints);
+    IFFTout = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.nFFTPoints);
+
+    // Create a plan by measuring the fastest method 
+    m_fftplan = fftw_plan_dft_1d(m_ofdmSettings.nFFTPoints, in, out, m_ofdmSettings.type, FFTW_MEASURE); 
+    m_ifftplan = fftw_plan_dft_1d(m_ofdmSettings.nFFTPoints, IFFTin, IFFTout, FFTW_BACKWARD, FFTW_MEASURE); 
 
     // Set configure flag
     m_configured = 1;
+    //m_ofdmSettings = settings;
     return 0;
 }
 
@@ -48,7 +77,7 @@ int ofdmFFT::Configure(size_t nPoints, int type, size_t pilotStep)
 * @return 0 on success, else error number
 *
 */    
-int ofdmFFT::Close()
+int FFT::Close()
 {
     fftw_destroy_plan(m_fftplan);
     fftw_free(in); fftw_free(out);
@@ -63,10 +92,10 @@ int ofdmFFT::Close()
 * @return 0 on success, else error number
 *
 */  
-int ofdmFFT::Normalise()
+int FFT::Normalise()
 {
-    double multiplicationFactor = 1./m_nFFT;
-    for (uint32_t i = 0; i < m_nFFT; i++)
+    double multiplicationFactor = 1./m_ofdmSettings.nFFTPoints;
+    for (size_t i = 0; i < m_ofdmSettings.nFFTPoints; i++)
     {
         out[i][0] *= multiplicationFactor;
         out[i][1] *= multiplicationFactor;
@@ -82,12 +111,15 @@ int ofdmFFT::Normalise()
 * @return symbol start(integer) index, else -1
 *
 */
-double ofdmFFT::GetImagSum(size_t nBytes) 
+double FFT::GetImagSum(const size_t nBytes) 
 {
+    // Compute number of pilot tones based on the bytes in the symbol
+    size_t nPilots = (size_t) (((nBytes*BITS_IN_BYTE)/BITS_PER_FREQ_POINT)/m_ofdmSettings.PilotToneDistance);
+    // Compute frequency coefficient index used
+    // Assume spectrum is centred symmetrically around DC and depends on nBytes
     double sumOfImag = 0.0;
-    size_t pilotToneCounter =  (int) m_pilotToneStep / 2 ; // divide this by to when starting with -ve frequencies
-    size_t fftPointIndex = (int) ((m_nFFT*2) - (m_nFFT*2) / m_pilotToneStep / 2 - nBytes * 4 / 2);
-    fftPointIndex = (int) fftPointIndex / 2;
+    size_t pilotToneCounter = (size_t) m_ofdmSettings.PilotToneDistance / 2 ; // divide this by to when starting with -ve frequencies
+    size_t fftPointIndex = (size_t) ((m_ofdmSettings.nFFTPoints) - (nPilots/ 2) - ((nBytes * 4) / 2));
     size_t insertionCounter = 0;
     // For expected byte 
     for(size_t byteCounter = 0; byteCounter < nBytes; byteCounter++)
@@ -101,8 +133,8 @@ double ofdmFFT::GetImagSum(size_t nBytes)
             if(pilotToneCounter == 0)
             {
                 // Reset Counter
-                pilotToneCounter = m_pilotToneStep;
-                sumOfImag += out[fftPointIndex][1];
+                pilotToneCounter = m_ofdmSettings.PilotToneDistance;
+                sumOfImag += abs(out[fftPointIndex][1]);
     
             }
             // This point is QAM encoded complex point
@@ -114,13 +146,12 @@ double ofdmFFT::GetImagSum(size_t nBytes)
             // Increment fft point counter
             fftPointIndex++;
             // Check if fft exceeds the limit of points
-            if(fftPointIndex == m_nFFT)
+            if(fftPointIndex == m_ofdmSettings.nFFTPoints)
             {
                 // Roll back to positive frequencies
                 fftPointIndex = 0;
             }
         }
-
     }
     // Return sum
     return sumOfImag;
@@ -134,7 +165,7 @@ double ofdmFFT::GetImagSum(size_t nBytes)
 * @return 0 on success, else error number
 *
 */    
-int ofdmFFT::ComputeTransform()
+int FFT::ComputeTransform()
 {
     fftw_execute(m_fftplan);
     return 0;
@@ -151,7 +182,7 @@ int ofdmFFT::ComputeTransform()
 * @return 0 on success, else error number
 *
 */   
-int ofdmFFT::ComputeTransform(fftw_complex *dest)
+int FFT::ComputeTransform(fftw_complex *dest)
 {
     fftw_execute_dft(m_fftplan, in, dest);
     return 0;

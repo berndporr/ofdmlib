@@ -21,10 +21,10 @@
 \contentsline {section}{\numberline {4}System Features}{5}%
 \contentsline {subsection}{\numberline {4.1}System}{5}%
 \contentsline {subsubsection}{Data}{5}%
-\contentsline {subsubsection}{Coder object}{5}%
+\contentsline {subsubsection}{Codec object}{5}%
 \contentsline {subsection}{\numberline {4.2}OFDM Functional Objects (Tx \& Rx Chain)}{6}%
 \contentsline {subsubsection}{Energy Dispersal}{6}%
-\contentsline {subsubsection}{Digital Quadrature De/Modulator }{6}%
+\contentsline {subsubsection}{Quadrature De/Modulator }{6}%
 \contentsline {subsubsection}{Pilot Tones}{7}%
 \contentsline {subsubsection}{Fourier and Inverse Fourier Transform}{7}%
 \contentsline {subsubsection}{Nyquist Modulator}{8}%
