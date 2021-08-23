@@ -15,7 +15,7 @@ Detector::Detector(OFDMSettings &settings, FFT &fft, NyquistModulator &nyquist) 
     m_ofdmSettings(settings),
     rFFT(fft),
     rNyquistModulator(nyquist),
-    m_threshold(250),
+    m_threshold(300),
     m_SearchRange(25),
     m_StartOffset(0),
     m_LastPeakCounter(0)

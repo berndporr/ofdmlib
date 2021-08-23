@@ -32,6 +32,7 @@
 #define BITS_IN_BYTE            8
 #define BITS_PER_FREQ_POINT     2
 #define BYTE_MAX                255
+#define FREQ_POINTS_PER_BYTE    4
 
 /**
  * @brief 4-QAM modulator object,
@@ -97,7 +98,7 @@ inline void QamModulator::Modulate(const uint8_t *input, DoubleVec &output, size
     size_t nPilots = (size_t) (((nBytes*BITS_IN_BYTE)/BITS_PER_FREQ_POINT)/m_ofdmSettings.PilotToneDistance);
     // Compute frequency coefficient index used
     // Assume spectrum is centred symmetrically around DC and depends on nBytes
-    size_t startIndex = (size_t) ((m_ofdmSettings.nFFTPoints) - (nPilots/ 2) - ((nBytes * 4) / 2)); // Pilot tones are set incorrectly 
+    size_t startIndex = (size_t) ((m_ofdmSettings.nFFTPoints) - (nPilots/ 2) - ((nBytes * 4) / 2));
     //size_t startIndex = (int) ((m_nFFT) - (((m_nFFT) / m_pilotToneStep) / 2) - ((nBytes * 4) / 2)); // Pilot tones are set incorrectly 
 
     // Start insertion with negative frequencies
@@ -122,7 +123,7 @@ inline void QamModulator::Modulate(const uint8_t *input, DoubleVec &output, size
         // Reset fft point insertion counter 
         insertionCounter = 0;
         // While byte is being encoded
-        while(insertionCounter < 4)
+        while(insertionCounter < FREQ_POINTS_PER_BYTE)
         {
             // If pilot tone counter counted down
             if(pilotCounter == 0)
@@ -198,7 +199,7 @@ inline void QamModulator::Demodulate(const DoubleVec &input, uint8_t *output, si
     size_t nPilots = (size_t) (((nBytes*BITS_IN_BYTE)/BITS_PER_FREQ_POINT)/m_ofdmSettings.PilotToneDistance);
     // Compute frequency coefficient index used
     // Assume spectrum is centred symmetrically around DC and depends on nBytes
-    size_t startIndex = (size_t) ((m_ofdmSettings.nFFTPoints) - (nPilots/ 2) - ((nBytes * 4) / 2)); // Pilot tones are set incorrectly 
+    size_t startIndex = (size_t) ((m_ofdmSettings.nFFTPoints) - (nPilots/ 2) - ((nBytes * 4) / 2));
     //size_t startIndex = (int) ((m_nFFT) - (((m_nFFT) / m_pilotToneStep) / 2) - ((nBytes * 4 )/ 2));
 
     // Start insertion with negative frequencies
@@ -215,12 +216,12 @@ inline void QamModulator::Demodulate(const DoubleVec &input, uint8_t *output, si
     {
         // Reset byte
         output[byteCounter] = 0;
-        // Reset fft input pointer
+        // Reset insertion counter pointer
         insertionCounter = 0;
         // Reset bit mask
         bitMask = 0x01;
         // Process 4 FFT points i.e 8 bits
-        while(insertionCounter < 4)
+        while(insertionCounter < FREQ_POINTS_PER_BYTE)
         {
             // If pilot tone counter counted down
             // This point is pilot tone

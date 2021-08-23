@@ -462,10 +462,10 @@ BOOST_AUTO_TEST_CASE(TheorethicalSelfReceiving)
 }
 */
 
-
+/*
 BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
 {
-    std::cout << "\n Recorded Self-Receiveing Test\n" << std::endl;
+    std::cout << "\nRecorded Self-Receiveing Test\n" << std::endl;
     // OFDM Codec Settings
     OFDMSettings encoderSettings;
     encoderSettings.type = FFTW_BACKWARD;
@@ -634,11 +634,13 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
     free(rxOut);
 }
 
+*/
+
 
 BOOST_AUTO_TEST_CASE(RecordedImageSelfReceiveing)
 {
     using namespace matplot;
-    std::cout << "\n Recorded Self-Receiveing Test\n" << std::endl;
+    std::cout << "\nReal-time Self-Receiveing Test\n" << std::endl;
     // OFDM Codec Settings
     OFDMSettings encoderSettings;
     encoderSettings.type = FFTW_BACKWARD;
@@ -647,7 +649,7 @@ BOOST_AUTO_TEST_CASE(RecordedImageSelfReceiveing)
     encoderSettings.PilotToneDistance = 16; 
     encoderSettings.PilotToneAmplitude = 2.0; 
     encoderSettings.QAMSize = 2; 
-    encoderSettings.PrefixSize = (size_t) ((encoderSettings.nFFTPoints*2)/4); // 1/4th of symbol
+    encoderSettings.PrefixSize = (size_t) ((encoderSettings.nFFTPoints*2) /4); // 1/4th of symbol
 
     OFDMSettings decoderSettings = encoderSettings;
     decoderSettings.type = FFTW_FORWARD;
@@ -665,31 +667,40 @@ BOOST_AUTO_TEST_CASE(RecordedImageSelfReceiveing)
     // Calculate prefixed symbol size 
     size_t prefixedSymbolSize = (encoderSettings.nFFTPoints*2) + encoderSettings.PrefixSize;
 
-    // rt audioSettings
+    // Create input & output array
+    uint8_t *txIn = (uint8_t*) calloc(nBytes*nSymbolsToTx, sizeof(uint8_t));
+    uint8_t *rxOut = (uint8_t*) calloc(nBytes*nSymbolsToTx, sizeof(uint8_t));
+
+    // Setup random seed
+    srand( (unsigned)time( NULL ) );
+
+    // Generate array of random bytes
+    for (size_t i = 0; i < nBytes*nSymbolsToTx; i++)
+    {
+        txIn[i] = rand() % 255;
+    }
+
+    // Configure rt audioSettings
     rtAudioSettings audioSettings;
     audioSettings.SampleRate = 8000;
     audioSettings.BufferFrames = prefixedSymbolSize;
     audioSettings.nChannels = 1;
     audioSettings.InputDevice = 0;
-    audioSettings.OutputDevice = 0;
+    audioSettings.OutputDevice = 1;
     audioSettings.InputOffset = 0;
     audioSettings.OutputOffset = 0;
 
     // Initialize transceiver
     AudioTrx trx(audioSettings, encoderSettings, decoderSettings, REAL_TIME);
 
-    // Create input & output array
-    uint8_t *txIn = (uint8_t*) calloc(nBytes*nSymbolsToTx, sizeof(uint8_t));
-    uint8_t *testRxOut = (uint8_t*) calloc(nBytes*nSymbolsToTx, sizeof(uint8_t));
-    uint8_t *rxOut = (uint8_t*) calloc(nBytes*nSymbolsToTx, sizeof(uint8_t));
-
     // Configure callbacks data struct
     // Tx callbacks
-    trx.m_TxCallbackData.nMaxBytesPerSymbol = nBytes;
     trx.m_TxCallbackData.txBuffer = txIn;
-
+    trx.m_TxCallbackData.nBytesPerSymbol = nBytes;
+    trx.m_TxCallbackData.nBytes = nBytes * nSymbolsToTx;
     // Rx callback
     trx.m_RxCallbackData.rxBuffer = rxOut;
+    trx.m_RxCallbackData.nBytesPerSymbol = nBytes;
 
     // Start receiver
     trx.StartRxStream();
@@ -697,12 +708,16 @@ BOOST_AUTO_TEST_CASE(RecordedImageSelfReceiveing)
     // Transmit Encoded Symbols bytes
     trx.StartTxStream();
 
-    //calculate sleep time
-    size_t secToSleep = ((nSymbolsToTx*prefixedSymbolSize) / 8000) + 1;
+    // Calculate sleep time
+    size_t secToSleep = ((nSymbolsToTx*prefixedSymbolSize) / 8000);
+    std::cout << "Transmission time "<< secToSleep << "Seconds" << std::endl;
+    secToSleep += 2;   
+    std::cout << "Time to sleep "<< secToSleep << "Seconds!" << std::endl;    
     // Wait to receive 
     sleep(secToSleep);
     std::cout << "Woke up from sleep!" << std::endl;
 
+    // Measure failure rate
     size_t byteErrorCount = 0;
     std::vector<double> symbolErrorCounter;
     for(size_t j = 0; j < nSymbolsToTx; j++)
@@ -725,9 +740,10 @@ BOOST_AUTO_TEST_CASE(RecordedImageSelfReceiveing)
         std::cout <<  j  << " Symbol Error Count = " << byteErrorCount << std::endl;
     }
 
+    /*
     free(txIn);
-    free(testRxOut);
     free(rxOut);
+    */
 }
 
 

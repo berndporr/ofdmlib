@@ -30,6 +30,7 @@ set(INCLUDE_DIRS
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/nyquist-modulator
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/detector
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/qam-modulator
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/channel-estimator
 )
 
 # Set Source files
@@ -40,6 +41,7 @@ set(SOURCE_FILE
    ${CMAKE_CURRENT_SOURCE_DIR}/utils/gnuplot-iostream.h
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/ofdmcodec.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/demo/trx.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/channel-estimator/channel-estimator.cpp
 )
 
 # Fetch Packages

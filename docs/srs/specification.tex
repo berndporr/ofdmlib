@@ -119,14 +119,14 @@ The following documentation is going to be delivered along with the software.
 
 \subsection{Assumptions and Dependencies}
 
-The core of OFDM is the Fourier and inverse Fourier transforms, there are numerous libraries in public domain which are highly optimised therefore the ofdmlib is going to utilize such libraries, this has legal/financial implications for potential developers but as per required delivery date for first major release this is the preferable choice, in the future the feasibility of developing own FFT and IFFT algorithms can be assessed.
+The core of OFDM is the Fourier and inverse Fourier transforms, there are numerous libraries in public domain which are highly optimised therefore the ofdmlib is going to utilize such libraries, this has legal/financial implications for potential developers but as per required delivery date for first major release this is the preferable choice, in the future the feasibility of other popular libraries or developing own FFT and IFFT algorithms is going to be evaluated.
 
 \pagebreak
 \section{External Interface Requirements}
 
 \subsection{User Interfaces}
 
-OFDM is library not a stand-alone application, therefore no GUI is required, the working demo delivered alongside the library is intended to be minimalistic and operated from command line hence no GUI requirements specification has been produced for this project. 
+OFDM is library not a stand-alone application, therefore no GUI is required, the working demo delivered alongside the library is intended to be minimalistic and embedded into the test suite hence no GUI requirements specification has been produced for this project. 
 
 Error message standards
 
@@ -156,7 +156,7 @@ Dependencies:
 
 Development Tools and Technologies:
 \begin{itemize}
-	\item C++ 11
+	\item C++ 17
 	\item Cmake 3.20.2
 	\item BOOST
 \end{itemize}\textbf{}
@@ -182,7 +182,7 @@ For the release 1.0 and all releases leading up to it all features are crucial t
 \subsubsection{Data}
 
 REQ-1: The underlying FFT and IFFT needs to work on one data type, double precision float \par
-REQ-2: The ofdm coders must handle most common data types at the input. \par
+REQ-2: The OFDM coders must handle most common data types at the input. \par
 REQ-3: \par
 
 % \usepackage{graphicx}
@@ -212,7 +212,7 @@ REQ-3: \par
 
 Description and Priority
 
-The coder object wraps all the objects related to ofdm modulation and provides easy to use interface and handles or the memory management when new data arrives
+The coder object wraps all the objects related to OFDM modulation and provides easy to use interface and handles or the memory management when new data arrives
 
 Functional Requirements:
 
@@ -272,8 +272,8 @@ When QAM encoded data is to be inverse Fourier transformed into time domain a pi
 Functional Requirements: \par
 
 REQ-1: Pilot tones cannot cause erasures or errors. Data needs to be manipulated appropriately to prevent this. \par
-REQ-2: The Pilot tone locations can be specified as a number of samples between next tones with an offset or as an array of indices. \par
-REQ-3: The pilot tone configuration, amplitude and locations, must be set as a part of the coder initialization process. \par
+REQ-2: The Pilot tone locations can be specified as a number of samples between next tones with an offset. \par
+REQ-3: The pilot tone configuration, amplitude and locations, must be set as a part of the codec's initialization process. \par
 REQ-4: The pilot tone configuration must be read and modifiable through set and get functions. \par
 REQ-5: Ideally the pilot tones should be set only once, upon the initialization of the IFFT input buffer or on configuration change. \par
 REQ-6: Decoder must sum all imaginary parts of the FFT. \par

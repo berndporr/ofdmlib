@@ -25,9 +25,10 @@
 OFDMCodec::OFDMCodec(OFDMSettings settingsStruct) :
     m_Settings(settingsStruct),
     m_fft(m_Settings),
-    m_NyquistModulator(m_Settings), // ( settingsStruct.type == +1 ) ?  m_fft.out : m_fft.in
+    m_NyquistModulator(m_Settings),
     m_detector(m_Settings, m_fft, m_NyquistModulator),
-    m_qam(m_Settings)
+    m_qam(m_Settings),
+    m_Estimator(m_Settings)
 {
     m_PrefixedSymbolSize = ((m_Settings.nFFTPoints * 2) + m_Settings.PrefixSize);
     // Create Rx Buffer capable of holding maximum of twice the prefixed symbol size samples
@@ -140,6 +141,8 @@ size_t OFDMCodec::ProcessRxBuffer(const double *input, uint8_t *output , size_t 
         m_fft.ComputeTransform();
         // Normalise FFT
         m_fft.Normalise();
+        // Estmiate Channel
+        //m_Estimator.PhaseCompenstator(m_fft.out, nBytes);
         // Decode QAM encoded fft points and place in the destination buffer
         m_qam.Demodulate( (DoubleVec &) m_fft.out, output, nBytes);
         // Copy Residue for next itteration

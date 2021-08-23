@@ -5,10 +5,8 @@
 * 
 */
 
-#define BITS_IN_BYTE 8
-#define BITS_PER_FREQ_POINT 2
-
 #include "fft.h"
+
 
 /**
 * Constructor 
@@ -60,7 +58,7 @@ int FFT::Configure()
     IFFTin = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.nFFTPoints);
     IFFTout = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.nFFTPoints);
 
-    // Create a plan by measuring the fastest method 
+    // Use the fastes avaiable plan for the size and type of the transform specified by measuring  
     m_fftplan = fftw_plan_dft_1d(m_ofdmSettings.nFFTPoints, in, out, m_ofdmSettings.type, FFTW_MEASURE); 
     m_ifftplan = fftw_plan_dft_1d(m_ofdmSettings.nFFTPoints, IFFTin, IFFTout, FFTW_BACKWARD, FFTW_MEASURE); 
 
@@ -80,6 +78,7 @@ int FFT::Configure()
 int FFT::Close()
 {
     fftw_destroy_plan(m_fftplan);
+    fftw_destroy_plan(m_ifftplan);
     fftw_free(in); fftw_free(out);
     m_configured = 0;
     return 0;
@@ -119,7 +118,7 @@ double FFT::GetImagSum(const size_t nBytes)
     // Assume spectrum is centred symmetrically around DC and depends on nBytes
     double sumOfImag = 0.0;
     size_t pilotToneCounter = (size_t) m_ofdmSettings.PilotToneDistance / 2 ; // divide this by to when starting with -ve frequencies
-    size_t fftPointIndex = (size_t) ((m_ofdmSettings.nFFTPoints) - (nPilots/ 2) - ((nBytes * 4) / 2));
+    size_t fftPointIndex = (size_t) ((m_ofdmSettings.nFFTPoints) - (nPilots/ 2) - ((nBytes * FREQ_POINTS_PER_BYTE) / 2));
     size_t insertionCounter = 0;
     // For expected byte 
     for(size_t byteCounter = 0; byteCounter < nBytes; byteCounter++)
@@ -155,6 +154,12 @@ double FFT::GetImagSum(const size_t nBytes)
     }
     // Return sum
     return sumOfImag;
+
+    // Skip to the first pilot
+    for(size_t i = 0; i < nPilots; i++)
+    {
+
+    }
 }
 
 

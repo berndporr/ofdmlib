@@ -12,8 +12,28 @@
 #include <errno.h>
 #include <time.h>
 
+// Debug callbacks //
 
-// Callbacks //
+int PlaybackRaw( void *outputBuffer, void * /*inputBuffer*/, unsigned int nBufferFrames,
+            double /*streamTime*/, RtAudioStreamStatus /*status*/, void *data )
+{
+  OutputData *oData = (OutputData*) data;
+
+  // Not good idea to read from file in the callback
+  unsigned int count = fread( outputBuffer, oData->channels * sizeof( MY_TYPE ), nBufferFrames, oData->fd);
+  if ( count < nBufferFrames )
+  {
+    unsigned int bytes = (nBufferFrames - count) * oData->channels * sizeof( MY_TYPE );
+    unsigned int startByte = count * oData->channels * sizeof( MY_TYPE );
+    memset( (char *)(outputBuffer)+startByte, 0, bytes );
+    return 1;
+  }
+
+  return 0;
+}
+
+
+// Recording Callbacks //
 
 int Record( void * /*outputBuffer*/, void *inputBuffer, unsigned int nBufferFrames,
            double /*streamTime*/, RtAudioStreamStatus status, void *data )
@@ -59,25 +79,7 @@ int Playback( void *outputBuffer, void * /*inputBuffer*/, unsigned int nBufferFr
   return 0;
 }
 
-
-int PlaybackRaw( void *outputBuffer, void * /*inputBuffer*/, unsigned int nBufferFrames,
-            double /*streamTime*/, RtAudioStreamStatus /*status*/, void *data )
-{
-  OutputData *oData = (OutputData*) data;
-
-  // Not good idea to read from file in the callback
-  unsigned int count = fread( outputBuffer, oData->channels * sizeof( MY_TYPE ), nBufferFrames, oData->fd);
-  if ( count < nBufferFrames )
-  {
-    unsigned int bytes = (nBufferFrames - count) * oData->channels * sizeof( MY_TYPE );
-    unsigned int startByte = count * oData->channels * sizeof( MY_TYPE );
-    memset( (char *)(outputBuffer)+startByte, 0, bytes );
-    return 1;
-  }
-
-  return 0;
-}
-
+// Real-Time operation mode callbacks //
 
 int TxCallback( void *outputBuffer, void* /*inputBuffer*/, unsigned int /*nBufferFrames*/,
                 double /*streamTime*/, RtAudioStreamStatus status, void *data )
@@ -94,23 +96,24 @@ int TxCallback( void *outputBuffer, void* /*inputBuffer*/, unsigned int /*nBuffe
     if(txCallbackData->nBytes > 0)
     {
         // Enough bytes to tx to fill ofdm symbol with nMaxBytesPerSymbol
-        if(txCallbackData->nBytes >= txCallbackData->nMaxBytesPerSymbol)
+        if(txCallbackData->nBytes >= txCallbackData->nBytesPerSymbol)
         {
           txCallbackData->pCodec->ProcessTxBuffer(&txCallbackData->txBuffer[txCallbackData->nTxByteCounter],
                                   (double *) outputBuffer, 
-                                  txCallbackData->nMaxBytesPerSymbol);
-          txCallbackData->nBytes -= txCallbackData->nMaxBytesPerSymbol;
-          txCallbackData->nTxByteCounter += txCallbackData->nMaxBytesPerSymbol;
+                                  txCallbackData->nBytesPerSymbol);
+          txCallbackData->nBytes -= txCallbackData->nBytesPerSymbol;
+          txCallbackData->nTxByteCounter += txCallbackData->nBytesPerSymbol;
         }
         // Last symbol to tx
         else
         {
+          std::cout << "Error: TxCallback not enough symbols" << std::endl;
           txCallbackData->pCodec->ProcessTxBuffer(
                                   &txCallbackData->txBuffer[txCallbackData->nTxByteCounter], 
                                   (double *) outputBuffer, txCallbackData->nBytes);
           txCallbackData->nBytes = 0;
           txCallbackData->nTxByteCounter += txCallbackData->nBytes;
-          return 2;
+          return 1;
         }
     }
     // No more data to Tx 
@@ -134,8 +137,8 @@ int RxCallback( void * /*outputBuffer*/, void *inputBuffer, unsigned int nBuffer
 
   // Recover callback data struct
   RxCallbackData *rxCallbackData = (RxCallbackData *) data;
-  // Process Data 
-  rxCallbackData->nRxBytes += rxCallbackData->pCodec->ProcessRxBuffer( (double *) inputBuffer, &rxCallbackData->rxBuffer[rxCallbackData->nRxBytes], 120 ); // TODO: ADD nbytes here
+  // Process data block 
+  rxCallbackData->nRxBytes += rxCallbackData->pCodec->ProcessRxBuffer( (double *) inputBuffer, &rxCallbackData->rxBuffer[rxCallbackData->nRxBytes], rxCallbackData->nBytesPerSymbol);
   return 0;
 }
 
@@ -195,20 +198,14 @@ AudioTrx::AudioTrx(rtAudioSettings audioSettings, OFDMSettings encoderSettings, 
     m_RxBufferFrames = m_rtAudioSettings.BufferFrames;
     m_TxBufferFrames = m_rtAudioSettings.BufferFrames;
 
-    // Test Case 2 Tx ofdm encoded symbols, Record everything & save then decode(pass Record & TxCallback)
-    // Setup the Tx callback data struct
-
-    // Calculate max nBytes 
+    // Set default settings for struct 
     size_t nAvaiablePoints = (encoderSettings.nFFTPoints - ((size_t)(encoderSettings.nFFTPoints / encoderSettings.PilotToneDistance)));
     size_t nMaxBytesPerSymbol = (nAvaiablePoints*encoderSettings.QAMSize) / 8;
-    size_t nSymbols = 1;
+    //restrict spectrum
+    //nMaxBytesPerSymbol /= 2;
+    nMaxBytesPerSymbol = 100;
 
-    m_TxCallbackData.pCodec = &m_encoder;
-    m_TxCallbackData.txBuffer = txIn;
-    m_TxCallbackData.nMaxBytesPerSymbol = nMaxBytesPerSymbol;
-    m_TxCallbackData.nBytes = nMaxBytesPerSymbol*nSymbols;
-    m_TxCallbackData.nTxByteCounter = 0;
-
+    size_t nSymbols = 5;
 
     size_t nTotalBuffers = 10;
     rxCopy = (double*) calloc((m_rtAudioSettings.BufferFrames * nTotalBuffers), sizeof(double));
@@ -217,26 +214,31 @@ AudioTrx::AudioTrx(rtAudioSettings audioSettings, OFDMSettings encoderSettings, 
     m_recordData.counter = 0;
     m_recordData.nRxFrames = 0;
     m_recordData.nChannels = audioSettings.nChannels;
-
-    // Normal Operation Setup 
-    m_RxCallbackData.cbCounter = 0;
-
+    
     // Set up the Rx callback data struct  
-    m_RxCallbackData.pCodec =  &m_decoder;
-    m_RxCallbackData.nMaxBytesPerSymbol = nMaxBytesPerSymbol;
+    m_RxCallbackData.pCodec = &m_decoder;
+    m_RxCallbackData.nBytesPerSymbol = nMaxBytesPerSymbol;
     m_RxCallbackData.rxBuffer = rxOut;
     m_RxCallbackData.nRxBytes = 0;
+    m_RxCallbackData.cbCounter = 0;
 
     // Setup the Tx callback data struct
     m_TxCallbackData.pCodec = &m_encoder;
     m_TxCallbackData.txBuffer = txIn;
-    m_TxCallbackData.nMaxBytesPerSymbol = nMaxBytesPerSymbol;
+    m_TxCallbackData.nBytesPerSymbol = nMaxBytesPerSymbol;
     m_TxCallbackData.nBytes = nMaxBytesPerSymbol*nSymbols;
     m_TxCallbackData.nTxByteCounter = 0;
 
-    // Asigns individual codecs to callback structs
-    m_TxCallbackData.pCodec = &m_encoder;
-    m_RxCallbackData.pCodec = &m_decoder;
+    // Set stream options
+    // Use default ALSA device
+    m_StreamOptions.flags |= RTAUDIO_ALSA_USE_DEFAULT;
+    // Set real-time round robin schedluing 
+    //m_StreamOptions.flags |= RTAUDIO_SCHEDULE_REALTIME;
+    // Minimize latency
+    m_StreamOptions.flags |= RTAUDIO_MINIMIZE_LATENCY;
+
+    // Set the number of buffers for ALSA to use
+    m_StreamOptions.numberOfBuffers = 4;
 
     OpenStreams(operationMode);
 
@@ -249,8 +251,8 @@ AudioTrx::AudioTrx(rtAudioSettings audioSettings, OFDMSettings encoderSettings, 
 */
 AudioTrx::~AudioTrx()
 {
-  StopTxStream();
-  StopRxStream();
+  //StopTxStream();
+  //StopRxStream();
 }
 
 /**
@@ -260,14 +262,17 @@ AudioTrx::~AudioTrx()
 void AudioTrx::OpenStreams(size_t mode)
 {
 
+
+
   switch(mode)
-  {
+  { 
     
     case REAL_TIME:
+        std::cout << "\nREAL-TIME TRX OPERATION!" << std::endl;
         // Try opening the rx stream
         try
         {
-            adc.openStream( NULL, &m_InputParams, RTAUDIO_FLOAT64, m_rtAudioSettings.SampleRate, &m_RxBufferFrames, RxCallback, reinterpret_cast<void *>(&m_RxCallbackData) );
+            adc.openStream( NULL, &m_InputParams, RTAUDIO_FLOAT64, m_rtAudioSettings.SampleRate, &m_RxBufferFrames, RxCallback, reinterpret_cast<void *>(&m_RxCallbackData), &m_StreamOptions );
         }
         catch ( RtAudioError& e )
         {
@@ -279,7 +284,7 @@ void AudioTrx::OpenStreams(size_t mode)
         // Try opening the tx stream
         try
         {
-            dac.openStream( &m_OutputParams, NULL, RTAUDIO_FLOAT64, m_rtAudioSettings.SampleRate, &m_TxBufferFrames, TxCallback, reinterpret_cast<void *>(&m_TxCallbackData) );
+            dac.openStream( &m_OutputParams, NULL, RTAUDIO_FLOAT64, m_rtAudioSettings.SampleRate, &m_TxBufferFrames, TxCallback, reinterpret_cast<void *>(&m_TxCallbackData), &m_StreamOptions );
         }
         catch ( RtAudioError& e )
         {
@@ -289,10 +294,11 @@ void AudioTrx::OpenStreams(size_t mode)
     break;
 
     case RECORDING:
+        std::cout << "RECORDING TRX OPERATION!" << std::endl;
         // Try opening the rx stream
         try
         {
-            adc.openStream( NULL, &m_InputParams, RTAUDIO_FLOAT64, m_rtAudioSettings.SampleRate, &m_RxBufferFrames, Record, reinterpret_cast<void *>(&m_recordData) );
+            adc.openStream( NULL, &m_InputParams, RTAUDIO_FLOAT64, m_rtAudioSettings.SampleRate, &m_RxBufferFrames, Record, reinterpret_cast<void *>(&m_recordData), &m_StreamOptions );
         }
         catch ( RtAudioError& e )
         {
@@ -303,7 +309,7 @@ void AudioTrx::OpenStreams(size_t mode)
         // Try opening the tx stream
         try
         {
-            dac.openStream( &m_OutputParams, NULL, RTAUDIO_FLOAT64, m_rtAudioSettings.SampleRate, &m_TxBufferFrames, Playback, reinterpret_cast<void *>(&m_playbackData) );
+            dac.openStream( &m_OutputParams, NULL, RTAUDIO_FLOAT64, m_rtAudioSettings.SampleRate, &m_TxBufferFrames, Playback, reinterpret_cast<void *>(&m_playbackData), &m_StreamOptions );
         }
         catch ( RtAudioError& e )
         {

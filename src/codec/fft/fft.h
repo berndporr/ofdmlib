@@ -18,7 +18,9 @@
 
 #include "common.h"
 
-
+#define BITS_IN_BYTE            8
+#define BITS_PER_FREQ_POINT     2
+#define FREQ_POINTS_PER_BYTE    4
 /**
  * @brief Fourier transform object class
  * This object is a wrapper of fftw3 library function for ofdmlib.

@@ -18,7 +18,8 @@
 #include <fftw3.h>
 
 // Ofdmlib objects
-#include "detector.h" // this has fft & nyquist definitions as include header
+#include "channel-estimator.h"
+#include "detector.h"             // Detector Contains the fft & nyquist definitions as include header
 #include "qam-modulator.h"
 #include "common.h"
 
@@ -71,6 +72,7 @@ private:
 	NyquistModulator m_NyquistModulator;
     Detector m_detector;
     QamModulator m_qam;
+    ChannelEstimator m_Estimator;
 
     size_t m_PrefixedSymbolSize;
 
