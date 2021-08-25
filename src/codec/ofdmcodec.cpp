@@ -31,8 +31,6 @@ OFDMCodec::OFDMCodec(OFDMSettings settingsStruct) :
     m_Estimator(m_Settings)
 {
     m_PrefixedSymbolSize = ((m_Settings.nFFTPoints * 2) + m_Settings.PrefixSize);
-    // Create Rx Buffer capable of holding maximum of twice the prefixed symbol size samples
-    rxBuffer = (double*) calloc((m_PrefixedSymbolSize*2),sizeof(double));
 }
 
 
@@ -42,7 +40,7 @@ OFDMCodec::OFDMCodec(OFDMSettings settingsStruct) :
 */
 OFDMCodec::~OFDMCodec()
 {
-    free(rxBuffer);
+
 }
 
 
@@ -103,7 +101,7 @@ void OFDMCodec::Decode(const double *input, uint8_t *output, size_t nBytes)
     {
         symbolStart = m_detector.FindSymbolStart(input, nBytes);
         // Run Data thrgough nyquist demodulator
-        m_NyquistModulator.Demodulate(input, m_fft.in, symbolStart);
+        //m_NyquistModulator.Demodulate(input, m_fft.in, symbolStart);
         // Compute FFT & Normalise
         m_fft.ComputeTransform();
         // Normalise FFT
@@ -121,22 +119,19 @@ void OFDMCodec::Decode(const double *input, uint8_t *output, size_t nBytes)
 *
 * @param nBytes number of bytes encoded in the symbol
 *
-* @return byte vector containing decoded bytes
+* @return Number of bytes decoded by the  //TODO: return if symbol has been decoded sucessfully
 *
 */
 size_t OFDMCodec::ProcessRxBuffer(const double *input, uint8_t *output , size_t nBytes)
 {    
     long int symbolStart = -1;
-    // Copy Rx Buffer
-    memcpy(&rxBuffer[m_PrefixedSymbolSize], &input[0], m_PrefixedSymbolSize*sizeof(double));
     // Find Symbol Start
-    symbolStart = m_detector.FindSymbolStart(rxBuffer, nBytes);
+    symbolStart = m_detector.FindSymbolStart(input, nBytes);
     // If symbol start detected
     if (symbolStart >= 0)
     {
-        //std::cout << "Symbol Start Found = " << symbolStart << std::endl;
         // Run Data thrgough nyquist demodulator
-        m_NyquistModulator.Demodulate(rxBuffer, m_fft.in, symbolStart);
+        m_NyquistModulator.Demodulate(m_detector.m_BlockRingBuffer, m_fft.in, symbolStart);  // rxBuffer points to the block ring buffer
         // Compute FFT & Normalise
         m_fft.ComputeTransform();
         // Normalise FFT
@@ -145,14 +140,10 @@ size_t OFDMCodec::ProcessRxBuffer(const double *input, uint8_t *output , size_t 
         //m_Estimator.PhaseCompenstator(m_fft.out, nBytes);
         // Decode QAM encoded fft points and place in the destination buffer
         m_qam.Demodulate( (DoubleVec &) m_fft.out, output, nBytes);
-        // Copy Residue for next itteration
-        memcpy(&rxBuffer[0], &rxBuffer[m_PrefixedSymbolSize], m_PrefixedSymbolSize*sizeof(double));
         return nBytes;
     }
     else
     {
-        // Copy Residue for next itteration
-        memcpy(&rxBuffer[0], &rxBuffer[m_PrefixedSymbolSize], m_PrefixedSymbolSize*sizeof(double));
         return 0;
     }
 

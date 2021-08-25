@@ -75,7 +75,6 @@ BOOST_AUTO_TEST_CASE(CorrelatorTest)
 
     uint8_t * txBytes = (uint8_t*) calloc(nData, sizeof(uint8_t));
     double * modulatorOutput = (double*) calloc(prefixedSymbolSize, sizeof(double));
-    double * corellatorOutput = (double*) calloc(rxSignalSize, sizeof(double));
     double * rxSignal = (double*) calloc(rxSignalSize, sizeof(double));
 
     // Initialize Encoder objects
@@ -95,7 +94,7 @@ BOOST_AUTO_TEST_CASE(CorrelatorTest)
     }
 
     // Generate random index value for symbol start
-    size_t  symbolStart = rand() % rxLastAllowedIndex;
+    long int  symbolStart = rand() % rxLastAllowedIndex;
     printf("Randomly Generated Symbol Start = %lu\n",symbolStart);
 
     // Encode one symbol 
@@ -126,78 +125,29 @@ BOOST_AUTO_TEST_CASE(CorrelatorTest)
         }
     }
 
+    long int foundSymbolStart =-1;
     auto start = std::chrono::steady_clock::now();
-    for(size_t i = 0; i < rxLastAllowedIndex; i++)
+    size_t bufferCounter = 0;
+    while(foundSymbolStart == -1)
     {
-        corellatorOutput[i] = detector.ExecuteCorrelator(rxSignal, i);
+        foundSymbolStart = detector.FindSymbolStart(&rxSignal[bufferCounter*prefixedSymbolSize],nData);
+        bufferCounter++;
     }
     auto end = std::chrono::steady_clock::now();
+    std::cout << "bufferCounter = " << bufferCounter<<  std::endl;
 
-    std::cout << "Cross-Corellator elapsed time: "
+    std::cout << "FindSymbolStart elapsed time: "
     << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
     << " ns" << std::endl;   
 
-    
-    // Plot modulator output, symbol
-    std::vector<double> modOutput(prefixedSymbolSize);
-    for(size_t i = 0; i < prefixedSymbolSize; i++) 
-    {
-        modOutput.at(i) = modulatorOutput[i];
-    }
-
-    // Plot Corellator output
-    std::vector<double> corOutput(rxLastAllowedIndex);
-    // Copy Correlator output to vector
-    for(size_t i = 0; i < rxLastAllowedIndex; i++) 
-    {
-        // Square Result to reduce noise
-        corOutput.at(i) = corellatorOutput[i];
-    }
-
-    Gnuplot gp;
-    gp << "plot '-' with line title 'Correlator Test - Correlation'\n";
-    gp.send1d(corOutput);
-
-    Gnuplot gp1;
-    gp1 << "plot '-' with line title 'Symbol with prefix'\n";
-    gp1.send1d(modOutput);
-
-    
-    // Find Peak in correlation
-    size_t peakIndex = 0;
-    double max = 0.0;
-    start = std::chrono::steady_clock::now();
-    for (size_t i = 0; i < rxLastAllowedIndex; i++)
-    {
-        if(corellatorOutput[i] > max)
-        {
-            max = corellatorOutput[i];
-            peakIndex = i;
-        }
-    }
-    end = std::chrono::steady_clock::now();
-
-    std::cout << "Peak Search elapsed time: "
-    << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-    << " ns" << std::endl;   
-
+    long int ActualSymbolStart = symbolStart + 512;
     // Check if the correlator max output is where the symbol was inserted
-    BOOST_CHECK_MESSAGE( (peakIndex == symbolStart), 
-    "Symbol start has not been detected correctly, The max correlation occurs at index =  " << peakIndex );  
+    BOOST_CHECK_MESSAGE( foundSymbolStart == ActualSymbolStart, 
+    "Symbol start has not been detected correctly, found indicates index =  " << foundSymbolStart << " Whereas the actual start = " << ActualSymbolStart  );  
 
-
-    start = std::chrono::steady_clock::now();
-    for(size_t i = 0; i < symbolSize; i++)
-    {
-        corellatorOutput[i] = detector.ExecuteCorrelator(rxSignal, i);
-    }
-    end = std::chrono::steady_clock::now();
-
-    std::cout << "symbolSize Cross-Corellator elapsed time: "
-    << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-    << " ns" << std::endl;   
 }
 
+/*
 BOOST_AUTO_TEST_CASE(SymbolStartTest)
 {
     printf("\nTesting Symbol Start Search...\n");
@@ -282,7 +232,7 @@ BOOST_AUTO_TEST_CASE(SymbolStartTest)
     //  While Coarse Search index has not been found
     while(CoarseSearchIndex == -1)
     {
-        CoarseSearchIndex = detector.CoarseSearch(&rxSignal[counter*prefixedSymbolSize]);
+        //CoarseSearchIndex = detector.CoarseSearch(&rxSignal[counter*prefixedSymbolSize]); //TODO:
         // If whole buffer searched or Corase Search successfull
         if(counter == 9)
         {
@@ -327,7 +277,7 @@ BOOST_AUTO_TEST_CASE(SymbolStartTest)
 
         size_t startIndex = 0;
         // Restric start index of fine search to 0th element
-        if( ((searchRange-1) / 2) >= 0)
+        if( (symbolStartOffsetIndex - ((searchRange-1) / 2)) >= 0)
         {
             startIndex = symbolStartOffsetIndex - (size_t)((searchRange-1) / 2);
         }
@@ -344,7 +294,7 @@ BOOST_AUTO_TEST_CASE(SymbolStartTest)
         vectorCounter = 0;
         for(size_t i = startIndex; i < stopIndex; i++)
         {
-            sumOfImag = detector.ComputeSumOfImag(rxSignal, i, nData);
+            //sumOfImag = detector.ComputeSumOfImag(rxSignal, i, nData); TODO:
             fineSearchOutput.push_back(sumOfImag);
             vectorCounter++;
             if( sumOfImag < min )
@@ -354,6 +304,12 @@ BOOST_AUTO_TEST_CASE(SymbolStartTest)
             }
         }
         end = std::chrono::steady_clock::now();
+
+    //
+    //    start = std::chrono::steady_clock::now();
+    //    size_t FineSearchSymbolIndex = detector.FineSearch(rxSignal, symbolStartOffsetIndex,nData);
+    //    end = std::chrono::steady_clock::now();
+    //
 
     Gnuplot gp;
     gp << "plot '-' with line title 'Fine Search'\n";
@@ -370,5 +326,6 @@ BOOST_AUTO_TEST_CASE(SymbolStartTest)
     "Symbol start has not been detected correctly, The lowest img sum occurs at start index: " << FineSearchSymbolIndex );  
         
 }
+*/
 
 BOOST_AUTO_TEST_SUITE_END()

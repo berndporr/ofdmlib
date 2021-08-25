@@ -104,17 +104,6 @@ int TxCallback( void *outputBuffer, void* /*inputBuffer*/, unsigned int /*nBuffe
           txCallbackData->nBytes -= txCallbackData->nBytesPerSymbol;
           txCallbackData->nTxByteCounter += txCallbackData->nBytesPerSymbol;
         }
-        // Last symbol to tx
-        else
-        {
-          std::cout << "Error: TxCallback not enough symbols" << std::endl;
-          txCallbackData->pCodec->ProcessTxBuffer(
-                                  &txCallbackData->txBuffer[txCallbackData->nTxByteCounter], 
-                                  (double *) outputBuffer, txCallbackData->nBytes);
-          txCallbackData->nBytes = 0;
-          txCallbackData->nTxByteCounter += txCallbackData->nBytes;
-          return 1;
-        }
     }
     // No more data to Tx 
     else
@@ -138,7 +127,9 @@ int RxCallback( void * /*outputBuffer*/, void *inputBuffer, unsigned int nBuffer
   // Recover callback data struct
   RxCallbackData *rxCallbackData = (RxCallbackData *) data;
   // Process data block 
-  rxCallbackData->nRxBytes += rxCallbackData->pCodec->ProcessRxBuffer( (double *) inputBuffer, &rxCallbackData->rxBuffer[rxCallbackData->nRxBytes], rxCallbackData->nBytesPerSymbol);
+  rxCallbackData->nRxBytes += rxCallbackData->pCodec->ProcessRxBuffer( (double *) inputBuffer,
+                                                      &rxCallbackData->rxBuffer[rxCallbackData->nRxBytes],
+                                                      rxCallbackData->nBytesPerSymbol);
   return 0;
 }
 
@@ -233,12 +224,13 @@ AudioTrx::AudioTrx(rtAudioSettings audioSettings, OFDMSettings encoderSettings, 
     // Use default ALSA device
     m_StreamOptions.flags |= RTAUDIO_ALSA_USE_DEFAULT;
     // Set real-time round robin schedluing 
-    //m_StreamOptions.flags |= RTAUDIO_SCHEDULE_REALTIME;
+    m_StreamOptions.flags |= RTAUDIO_SCHEDULE_REALTIME;
     // Minimize latency
     m_StreamOptions.flags |= RTAUDIO_MINIMIZE_LATENCY;
-
+    // Attempt exclusive use of the device
+    m_StreamOptions.flags |= RTAUDIO_HOG_DEVICE;
     // Set the number of buffers for ALSA to use
-    m_StreamOptions.numberOfBuffers = 4;
+    //m_StreamOptions.numberOfBuffers = 4;
 
     OpenStreams(operationMode);
 

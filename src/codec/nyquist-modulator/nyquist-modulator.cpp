@@ -19,7 +19,12 @@
 NyquistModulator::NyquistModulator(OFDMSettings &settings) :
     m_ofdmSettings(settings)
 {
-
+    m_RingBufferBoundary = 7680;
+    // Allocate memory for a temporary buffer
+    // For the edge case where the symbol spans across 
+    // end and start of the ring buffer
+    // TODO: Asses whether the if statements are faster
+    m_TempBuffer = (double*) calloc((m_ofdmSettings.nFFTPoints*2), sizeof(double));
 }
 
 
@@ -95,25 +100,55 @@ void NyquistModulator::Modulate(double *ifftOutput)
 * @param symbolStart Start of the actual first sample of the symbol in the Rx signal buffer. 
 *
 */   
-void NyquistModulator::Demodulate(const double *rxBuffer, fftw_complex *pFFTInput, const size_t symbolStart)
+void NyquistModulator::Demodulate(double *rxBuffer, fftw_complex *pFFTInput, const size_t symbolStart)
 {
+    
+    double *pRxBuffer = nullptr;
+    size_t symbolSize = m_ofdmSettings.nFFTPoints*2;
+    // Initialize double buffer counter
+    size_t j = symbolStart;
+    // If symbol lies across the end edge of the buffer.
+    // Use temporary buffer to allign the symbol for demodulation
+    if( symbolStart >= (m_RingBufferBoundary - symbolSize))
+    {
+        //std::cout << " Demodulator Edge Case!" << std::endl;
+        // Calculate the number elements of the symbol untill boundary of the ring buffer
+        size_t nToBoundary = m_RingBufferBoundary - symbolStart;
+        // Copy samples
+        memcpy( &m_TempBuffer[0], &rxBuffer[symbolStart], nToBoundary*sizeof(double));
+        // Calculate the number elements of the symbol over boundary of the ring buffer
+        size_t nOverBoundary = symbolSize - nToBoundary;
+        // Copy samples
+        memcpy(&m_TempBuffer[nToBoundary], &rxBuffer[0], nOverBoundary*sizeof(double));
+        //std::cout << " Demodulator Addition = " << nOverBoundary + nToBoundary << std::endl;
+        // Assign Pointer
+        pRxBuffer = m_TempBuffer;
+        // Update counter;
+        j = 0;
+        
+    }
+    // Can demodulate straight from rxBuffer
+    else
+    {
+        pRxBuffer = rxBuffer;
+    }
+    
+
     // If the nPoints is even
     if(m_ofdmSettings.nFFTPoints % 2 == 0)
     {
-        // Initialize double buffer counter
-        size_t j = symbolStart;
         // For each expected FFT sample point
         for (size_t i = 0; i < m_ofdmSettings.nFFTPoints; i += 2)
         {
             // Copy first sample's real and img respectivley
-            pFFTInput[i][0] = rxBuffer[j];
+            pFFTInput[i][0] = pRxBuffer[j];
             j++;
-            pFFTInput[i][1] = rxBuffer[j];
+            pFFTInput[i][1] = pRxBuffer[j];
             j++;
             // Copy and the minus real and img respectivley of next the sample
-            pFFTInput[i+1][0] = -rxBuffer[j];
+            pFFTInput[i+1][0] = -pRxBuffer[j];
             j++;
-            pFFTInput[i+1][1] = -rxBuffer[j];
+            pFFTInput[i+1][1] = -pRxBuffer[j];
             j++;
         }
     }
@@ -122,17 +157,15 @@ void NyquistModulator::Demodulate(const double *rxBuffer, fftw_complex *pFFTInpu
     {
         // Initialize +1 / -1 multiplier
         int s = 1;
-        // Initialize double buffer counter
-        size_t j = symbolStart;
         // For each expected FFT sample point
         for(size_t i = 0; i < m_ofdmSettings.nFFTPoints; i++)
         {
             // Copy the real part of the sample and multiply by s factor
-            pFFTInput[i][0] = s * rxBuffer[j];
+            pFFTInput[i][0] = s * pRxBuffer[j];
             // Increment double buffer counter
             j++;
             // Copy the imag part of the sample and multiply by s factor
-            pFFTInput[i][1] = s * rxBuffer[j];
+            pFFTInput[i][1] = s * pRxBuffer[j];
             // Increment double buffer counter
             j++;
             // Compute factor for next sample

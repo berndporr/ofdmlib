@@ -1,18 +1,23 @@
 #define BOOST_TEST_MODULE IntegrationTest
 #include <boost/test/unit_test.hpp>
 
+// OpenCV for image
+
+
+
 // For IO
 #include <stdlib.h>
 #include <math.h>
 #include <iostream>
 #include <unistd.h>
 #include <bitset>
+#include <math.h>
 
 // Plotting
 #include <boost/tuple/tuple.hpp>
 #include "gnuplot-iostream.h"
 #include <utility>
-#include <matplot/matplot.h>
+//#include <matplot/matplot.h>
 
 // For measuring elapsed time
 #include <chrono>
@@ -24,7 +29,14 @@
 #include "trx.h"
 #include "common.h"
 
-
+// Image related
+#include <stdint.h>
+#define CHANNEL_NUM 1 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+/*
 void PlotFFT(double *symbol, size_t nFFTPoints) 
 {
     using namespace matplot;
@@ -109,7 +121,7 @@ void PlotRealFFT(double *data, size_t nFFTPoints)
     fftw_destroy_plan(fftplan);
     fftw_free(in); fftw_free(out);
 }
-
+*/
 /*
 void Plotbuffer(double *data, size_t nFFTPoints)
 {
@@ -371,7 +383,7 @@ BOOST_AUTO_TEST_CASE(TheorethicalSelfReceiving)
 
     // Calculate max nBytes 
     //size_t nAvaiablePoints = (encoderSettings.nFFTPoints - ((size_t)(encoderSettings.nFFTPoints / encoderSettings.PilotToneDistance)));
-    size_t nBytes = 120; // (nAvaiablePoints*encoderSettings.QAMSize) / 8;
+    size_t nBytes = 100; // (nAvaiablePoints*encoderSettings.QAMSize) / 8;
     size_t nSymbolsToTx = 5;
     size_t prefixedSymbolSize = (encoderSettings.nFFTPoints*2) + encoderSettings.PrefixSize;
 
@@ -381,12 +393,12 @@ BOOST_AUTO_TEST_CASE(TheorethicalSelfReceiving)
     audioSettings.BufferFrames = prefixedSymbolSize;
     audioSettings.nChannels = 1;
     audioSettings.InputDevice = 0;
-    audioSettings.OutputDevice = 0; // Use Speaker
+    audioSettings.OutputDevice = 0;
     audioSettings.InputOffset = 0;
     audioSettings.OutputOffset = 0;
 
     // Initialize transceiver
-    AudioTrx trx(audioSettings, encoderSettings, decoderSettings);
+    AudioTrx trx(audioSettings, encoderSettings, decoderSettings, RECORDING);
 
     // Create input & output array
     uint8_t *txIn = (uint8_t*) calloc(nBytes*nSymbolsToTx, sizeof(uint8_t));
@@ -394,69 +406,76 @@ BOOST_AUTO_TEST_CASE(TheorethicalSelfReceiving)
 
     // Create Tx Buffer
     // But make sure it is one prefixedSymbolSize larger to allow for appropriate decoding
-    double *encodedplayback = (double*) calloc( prefixedSymbolSize * (nSymbolsToTx + 1), sizeof(double));
-    double *OffsetEncodedPlayback = (double*) calloc( prefixedSymbolSize * (nSymbolsToTx + 1), sizeof(double));
-
-    // Create Rx Buffer
-    size_t recordBufferSize = prefixedSymbolSize*nSymbolsToTx*2; // Make the rec buffer x2 larger for good measure
-    double *recorded = (double*) calloc((recordBufferSize), sizeof(double));
-
+    size_t encodedplaybackSize = prefixedSymbolSize * (nSymbolsToTx + 1);
+    double *encodedplayback = (double*) calloc( encodedplaybackSize, sizeof(double));
+    size_t OffsetEncodedPlaybackSize = (prefixedSymbolSize * (nSymbolsToTx + 2));
+    double *OffsetEncodedPlayback = (double*) calloc( OffsetEncodedPlaybackSize, sizeof(double));
+    
     // Setup random seed
     srand( (unsigned)time( NULL ) );
 
-    // Generate array of random bytes
-    for (size_t i = 0; i < nBytes*nSymbolsToTx; i++)
+    for(size_t offsetIndex = 0; offsetIndex < 1; offsetIndex++) //prefixedSymbolSize
     {
-        txIn[i] = rand() % 255;
-    }
-
-    // Encode Symbols & Place them in buffer
-    for (size_t i = 0; i < nSymbolsToTx; i++)
-    {
-        trx.m_TxCallbackData.pCodec->Encode(&txIn[i*nBytes], &encodedplayback[i*prefixedSymbolSize], nBytes);
-    }
-
-    // Randomly Offset the start of the symbols
-    size_t randomOffset =  rand() % prefixedSymbolSize;
-    randomOffset = 2347;
-    // Copy encoded symbols to random position in the buffer
-    memcpy(&OffsetEncodedPlayback[randomOffset], encodedplayback, sizeof(double)*(prefixedSymbolSize * nSymbolsToTx ));
-
-    size_t bufferCounter = 0; 
-    size_t symbolCounter = 0;
-    size_t nDecodedBytes = 0;
-    
-    // Decode the encoded symbols to see if decoding functions work
-    // Until all encoded symbols have been decoded
-    while(symbolCounter != nSymbolsToTx)
-    {
-        // Decode Symbols
-        // They are alligned nicley here and start at the index that is passed
-        // However there is a delay of one buffer so last symbol cannot be decoded normally because of this the encode playback buffer is greater by one symbol 
-        nDecodedBytes = trx.m_RxCallbackData.pCodec->ProcessRxBuffer(&OffsetEncodedPlayback[bufferCounter*prefixedSymbolSize], &rxOut[symbolCounter*nBytes], nBytes);
-        // If the number of decoded bytes is greater than 0
-        if(nDecodedBytes > 0)
-        {   
-            // Symbol presumeably decoded correctly
-            // Increment counter to indicate this
-            symbolCounter++;
+         // Generate array of random bytes
+        for (size_t i = 0; i < nBytes*nSymbolsToTx; i++)
+        {
+            txIn[i] = rand() % 255;
         }
-        // Increment counter which indicates the 
-        bufferCounter++;
-    }
-    
-    // Check the theorethical real-time encoding and decoding is correct 
-    for (size_t i = 0; i < nBytes*nSymbolsToTx; i++)
-    {
-        //printf("%lu Sample: %d vs. %d\n", i, txIn[i], rxOut[i]);
+
+        // Encode Symbols & Place them in buffer
+        for (size_t i = 0; i < nSymbolsToTx; i++)
+        {
+            trx.m_TxCallbackData.pCodec->Encode(&txIn[i*nBytes], &encodedplayback[i*prefixedSymbolSize], nBytes);
+        }
+
+        // Copy encoded symbols to random position in the buffer
+        memcpy(&OffsetEncodedPlayback[prefixedSymbolSize+offsetIndex], encodedplayback, sizeof(double)*(prefixedSymbolSize * nSymbolsToTx ));
+
+        size_t bufferCounter = 0; 
+        size_t symbolCounter = 0;
+        size_t nDecodedBytes = 0;
         
-        // Check if bytes are same
-        BOOST_CHECK_MESSAGE( (txIn[i] == rxOut[i]), "RxOut: Bytes Differ!" ); 
+        // Decode the encoded symbols to see if decoding functions work
+        // Until all encoded symbols have been decoded
+        while(symbolCounter != nSymbolsToTx)
+        {
+            // Decode Symbols
+            // They are alligned nicley here and start at the index that is passed
+            // However there is a delay of one buffer so last symbol cannot be decoded normally because of this the encode playback buffer is greater by one symbol 
+            nDecodedBytes = trx.m_RxCallbackData.pCodec->ProcessRxBuffer(&OffsetEncodedPlayback[bufferCounter*prefixedSymbolSize], &rxOut[symbolCounter*nBytes], nBytes);
+            // If the number of decoded bytes is greater than 0
+            if(nDecodedBytes > 0)
+            {   
+                // Symbol presumeably decoded correctly
+                // Increment counter to indicate this
+                symbolCounter++;
+            }
+            // Increment counter which indicates the 
+            bufferCounter++;
+        }
+        
+        size_t BytesDifferCounter = 0;
+        // Check the theorethical real-time encoding and decoding is correct 
+        for (size_t i = 0; i < nBytes*nSymbolsToTx; i++)
+        {
+            //printf("%lu Sample: %d vs. %d\n", i, txIn[i], rxOut[i]);
+            
+            // Check if bytes are same
+            if(txIn[i] != rxOut[i])
+            {
+                BytesDifferCounter++;
+            }
+        }
+        // Check if encoded and decoded bytes differ
+        BOOST_CHECK_MESSAGE( (BytesDifferCounter == 0), "Bytes Differ!, Offset Index = " << offsetIndex ); 
+        // Reset OffsetEncodedPlayback array
+        memset(&OffsetEncodedPlayback[0], 0, (OffsetEncodedPlaybackSize* sizeof(double)));
+        memset(&encodedplayback[0], 0, (encodedplaybackSize* sizeof(double)));
+        
     }
 
     // Free allocated memory
     free(encodedplayback);
-    free(recorded);
     free(txIn);
     free(rxOut);
 }
@@ -498,7 +517,7 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
     audioSettings.BufferFrames = prefixedSymbolSize;
     audioSettings.nChannels = 1;
     audioSettings.InputDevice = 0;
-    audioSettings.OutputDevice = 0; // Use Speaker
+    audioSettings.OutputDevice = 0;
     audioSettings.InputOffset = 0;
     audioSettings.OutputOffset = 0;
 
@@ -507,7 +526,6 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
 
     // Create input & output array
     uint8_t *txIn = (uint8_t*) calloc(nBytes*nSymbolsToTx, sizeof(uint8_t));
-    uint8_t *testRxOut = (uint8_t*) calloc(nBytes*nSymbolsToTx, sizeof(uint8_t));
     uint8_t *rxOut = (uint8_t*) calloc(nBytes*nSymbolsToTx, sizeof(uint8_t));
 
     // Create Tx Buffer
@@ -548,7 +566,7 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
     }
 
     // Execute transform for last symbol to put data in out buffer
-    trx.m_encoder.m_fft.ComputeTransform();
+    //trx.m_encoder.m_fft.ComputeTransform();
     // Compute & Plot FFTs for ofdm symbol and tx symbol spectrum
     //PlotFFT((double *)trx.m_encoder.m_fft.out, encoderSettings.nFFTPoints);   // This plots the last symbol in the sequence
     //PlotRealFFT(encodedplayback, prefixedSymbolSize);            // This plots the first prefixed symbol in the sequence
@@ -564,7 +582,7 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
     trx.StartTxStream();
 
     //calculate sleep time
-    size_t secToSleep = ((nSymbolsToTx*prefixedSymbolSize) / 8000) + 1;
+    size_t secToSleep = ((nSymbolsToTx*prefixedSymbolSize) / 8000) + 2;
     // Wait to receive 
     sleep(secToSleep);
     std::cout << "Woke up from sleep!" << std::endl;
@@ -579,16 +597,18 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
 
     {
         // Process Rx buffer
-        //ScaleToAbsMax(&recorded[bufferCounter*prefixedSymbolSize], prefixedSymbolSize);
+        auto start = std::chrono::steady_clock::now();
         nDecodedBytes = trx.m_RxCallbackData.pCodec->ProcessRxBuffer(&recorded[bufferCounter*prefixedSymbolSize], &rxOut[symbolCounter*nBytes], nBytes);
+        auto end = std::chrono::steady_clock::now();
+        std::cout << "Process Rx Buffer Elapsed Time = "
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+        << " ns" << std::endl;  
         // Increment buffer counter
         bufferCounter++;
         if(nDecodedBytes > 0)
         {
             // Increment decoded symbol counter
             symbolCounter++;
-            //std::cout << symbolCounter << " Symbol Decoded!" << std::endl;
-            //std::cout << "bufferCounter = " << bufferCounter << std::endl;
         }
 
         // whole Rx Buffer has been processed
@@ -599,7 +619,7 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
         }
     }
 
-
+    std::cout << "bufferCounter " << bufferCounter << std::endl;
     size_t byteErrorCount = 0;
     std::vector<double> symbolErrorCounter;
     for(size_t j = 0; j < nSymbolsToTx; j++)
@@ -626,20 +646,25 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
     Plotbuffer(recorded, 20000);
     //Plotbuffer(encodedplayback, prefixedSymbolSize*nSymbolsToTx);
 
-    // Free allocated memory for buffers
-    free(encodedplayback);
-    free(recorded);
-    free(txIn);
-    free(testRxOut);
-    free(rxOut);
 }
-
 */
 
 
-BOOST_AUTO_TEST_CASE(RecordedImageSelfReceiveing)
+
+BOOST_AUTO_TEST_CASE(RealTimeSelfReceiveing)
 {
     using namespace matplot;
+ 
+    // Load Test Image
+    int width, height, bpp;
+    uint8_t* txImg = stbi_load("txImg.png", &width, &height, &bpp, CHANNEL_NUM);
+    size_t nBytesInImg = width*height*CHANNEL_NUM;
+    std::cout << " nBytesInImg = " << nBytesInImg << " sizeof(nBytesInImg) = " << sizeof(txImg) << std::endl;
+
+    // Create Rx Buffer for decoded data
+    uint8_t *rxImg = (uint8_t*) calloc(nBytesInImg, sizeof(uint8_t));
+
+
     std::cout << "\nReal-time Self-Receiveing Test\n" << std::endl;
     // OFDM Codec Settings
     OFDMSettings encoderSettings;
@@ -654,7 +679,7 @@ BOOST_AUTO_TEST_CASE(RecordedImageSelfReceiveing)
     OFDMSettings decoderSettings = encoderSettings;
     decoderSettings.type = FFTW_FORWARD;
 
-    size_t nSymbolsToTx = 5;
+
 
     // Calculate max avaiable points in the symbol for data
     size_t nAvaiablePoints = (encoderSettings.nFFTPoints - ((size_t)(encoderSettings.nFFTPoints / encoderSettings.PilotToneDistance)));
@@ -667,6 +692,9 @@ BOOST_AUTO_TEST_CASE(RecordedImageSelfReceiveing)
     // Calculate prefixed symbol size 
     size_t prefixedSymbolSize = (encoderSettings.nFFTPoints*2) + encoderSettings.PrefixSize;
 
+    size_t nSymbolsToTx = nBytesInImg/nBytes;
+
+    /*
     // Create input & output array
     uint8_t *txIn = (uint8_t*) calloc(nBytes*nSymbolsToTx, sizeof(uint8_t));
     uint8_t *rxOut = (uint8_t*) calloc(nBytes*nSymbolsToTx, sizeof(uint8_t));
@@ -679,14 +707,15 @@ BOOST_AUTO_TEST_CASE(RecordedImageSelfReceiveing)
     {
         txIn[i] = rand() % 255;
     }
+    */
 
     // Configure rt audioSettings
     rtAudioSettings audioSettings;
     audioSettings.SampleRate = 8000;
-    audioSettings.BufferFrames = prefixedSymbolSize;
+    audioSettings.BufferFrames = prefixedSymbolSize; // prefixedSymbolSize*5
     audioSettings.nChannels = 1;
     audioSettings.InputDevice = 0;
-    audioSettings.OutputDevice = 1;
+    audioSettings.OutputDevice = 0;
     audioSettings.InputOffset = 0;
     audioSettings.OutputOffset = 0;
 
@@ -695,30 +724,30 @@ BOOST_AUTO_TEST_CASE(RecordedImageSelfReceiveing)
 
     // Configure callbacks data struct
     // Tx callbacks
-    trx.m_TxCallbackData.txBuffer = txIn;
+    trx.m_TxCallbackData.txBuffer = txImg;
     trx.m_TxCallbackData.nBytesPerSymbol = nBytes;
     trx.m_TxCallbackData.nBytes = nBytes * nSymbolsToTx;
     // Rx callback
-    trx.m_RxCallbackData.rxBuffer = rxOut;
+    trx.m_RxCallbackData.rxBuffer = rxImg;
     trx.m_RxCallbackData.nBytesPerSymbol = nBytes;
-
+    
     // Start receiver
     trx.StartRxStream();
-
     // Transmit Encoded Symbols bytes
     trx.StartTxStream();
 
     // Calculate sleep time
     size_t secToSleep = ((nSymbolsToTx*prefixedSymbolSize) / 8000);
-    std::cout << "Transmission time "<< secToSleep << "Seconds" << std::endl;
+    std::cout << "Transmission time "<< secToSleep << " Seconds" << std::endl;
     secToSleep += 2;   
-    std::cout << "Time to sleep "<< secToSleep << "Seconds!" << std::endl;    
+    std::cout << "Time to sleep "<< secToSleep << " Seconds!" << std::endl;    
     // Wait to receive 
     sleep(secToSleep);
     std::cout << "Woke up from sleep!" << std::endl;
 
     // Measure failure rate
     size_t byteErrorCount = 0;
+    size_t totalErrorByteCnt = 0;
     std::vector<double> symbolErrorCounter;
     for(size_t j = 0; j < nSymbolsToTx; j++)
     {
@@ -727,23 +756,26 @@ BOOST_AUTO_TEST_CASE(RecordedImageSelfReceiveing)
         for(size_t i = j*nBytes; i < ((j+1)*nBytes); i++)
         {
             // Print Tx and decoded Rx bytes
-            //printf("%lu Byte: %d vs. %d\n", i, txIn[i], rxOut[i]);
-            if(txIn[i] != rxOut[i])
+            //printf("%lu Byte: %d vs. %d\n", i, txIn[i], rxImg[i]);
+            if(txImg[i] != rxImg[i])
             {
                 byteErrorCount++;
             }
             
             // Check if real and complex element match within defined precision of each other
-            //BOOST_CHECK_MESSAGE( (txIn[i] == rxOut[i]), "Bytes difffer! Index = " << i ); 
+            //BOOST_CHECK_MESSAGE( (txIn[i] == rxImg[i]), "Bytes difffer! Index = " << i ); 
         }
         symbolErrorCounter.push_back(byteErrorCount);
+        totalErrorByteCnt += byteErrorCount;
         std::cout <<  j  << " Symbol Error Count = " << byteErrorCount << std::endl;
     }
+    size_t nTotalBytes = (nBytes*nSymbolsToTx);
+    double percentByteErrorRate =  100.0 * (   ((double) totalErrorByteCnt / (double)nTotalBytes));
+    std::cout << "Total byte error rate is " << totalErrorByteCnt << "/"<< nBytes*nSymbolsToTx << " - " << percentByteErrorRate << " %" << std::endl;
 
-    /*
-    free(txIn);
-    free(rxOut);
-    */
+    stbi_write_jpg("rxImg.png", width, height, CHANNEL_NUM, rxImg, width * CHANNEL_NUM);
+
+    //stbi_image_free(rgb_image);
 }
 
 

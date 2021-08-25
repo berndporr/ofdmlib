@@ -14,7 +14,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Enable debug mode, all warrnings and prevent compilation if
 # any errors are encountered 
-add_compile_options(-g -Wall -Werror -lasound)
+add_compile_options(-g -Wall -Werror -lasound -D__LINUX_ALSA__ -lpthread)
 
 # Set the project name and version
 project(ofdmlib VERSION 0.1)

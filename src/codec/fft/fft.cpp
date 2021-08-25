@@ -17,6 +17,13 @@ FFT::FFT(OFDMSettings &settings) :
     m_ofdmSettings(settings)
 {
     Configure();
+
+    // Compute number of pilot tones based on the bytes in the symbol
+    //m_nPilots = (size_t) (((100*BITS_IN_BYTE)/BITS_PER_FREQ_POINT)/m_ofdmSettings.PilotToneDistance); // 100 = nbytes
+    // Compute frequency coefficient index used
+    // Assume spectrum is centred symmetrically around DC and depends on nBytes
+    //size_t fftPointIndex = (size_t) ((m_ofdmSettings.nFFTPoints) - (m_nPilots/ 2) - ((100 * FREQ_POINTS_PER_BYTE) / 2));
+    //m_PilotStartIndex = fftPointIndex;
 }
 
 
@@ -154,12 +161,6 @@ double FFT::GetImagSum(const size_t nBytes)
     }
     // Return sum
     return sumOfImag;
-
-    // Skip to the first pilot
-    for(size_t i = 0; i < nPilots; i++)
-    {
-
-    }
 }
 
 

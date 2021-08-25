@@ -76,9 +76,8 @@ private:
 
     size_t m_PrefixedSymbolSize;
 
-	// Real-time Rx buffer
-    // Contains the ADC samples and must hold 2x prefixed symbol size samples
-    double *rxBuffer; 
+
+
 
 };
 

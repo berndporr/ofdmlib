@@ -72,6 +72,8 @@ private:
 	int m_configured = 0;
     fftw_plan m_fftplan; /// FFT plan 
 	fftw_plan m_ifftplan;
+	size_t m_PilotStartIndex;
+	size_t m_nPilots;
 
 };
 
