@@ -1,10 +1,6 @@
 #define BOOST_TEST_MODULE IntegrationTest
 #include <boost/test/unit_test.hpp>
 
-// OpenCV for image
-
-
-
 // For IO
 #include <stdlib.h>
 #include <math.h>
@@ -27,7 +23,6 @@
 
 // For object under test
 #include "trx.h"
-#include "common.h"
 
 // Image related
 #include <stdint.h>
@@ -36,6 +31,7 @@
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+
 /*
 void PlotFFT(double *symbol, size_t nFFTPoints) 
 {
@@ -202,41 +198,8 @@ void NormaliseToValue(double *buffer, size_t size, double value)
 void ScaleToAbsMax(double *buffer, size_t size)
 {
     double value = FindAbsMaxValue(buffer, size);
-    //std::cout << "max value = " <<  value << std::endl;
     NormaliseToValue(buffer, size, value);
 }
-
-
-/*
-void LoadGreyScaleImage(matplot::image_channels_t gray)
-{
-    using namespace matplot;
-    auto [h, w] = size(gray);
-    double mean_intensity = 0;
-    for(const auto &row : gray)
-    {
-        for (const auto &pixel : row)
-        {
-            mean_intensity += pixel;
-        }
-    }
-    
-    mean_intensity /= (h * w);
-
-    for (auto &row : gray)
-    {
-        for (auto &pixel : row)
-        {
-            pixel = pixel > mean_intensity ? 255 : 0;
-        }
-    }
-
-    imshow(gray);
-
-    show();     
-
-}
-*/
 
 
 double ComputeBitErrorRatio(uint8_t *input, uint8_t *output, size_t nBytes)
@@ -277,7 +240,7 @@ BOOST_AUTO_TEST_CASE(EncodeDecode)
 {
     printf("Testing OFDM Encoder & Decoder Object...\n");
     // OFDM Codec Settings
-    OFDMSettings encoderSettings;
+    OFDMSettingsStruct encoderSettings;
     encoderSettings.type = FFTW_BACKWARD;
     encoderSettings.EnergyDispersalSeed = 10;
     encoderSettings.nFFTPoints = 1024; 
@@ -286,7 +249,7 @@ BOOST_AUTO_TEST_CASE(EncodeDecode)
     encoderSettings.QAMSize = 2; 
     encoderSettings.PrefixSize = (size_t) ((encoderSettings.nFFTPoints*2)/4); // 1/4th of symbol
 
-    OFDMSettings decoderSettings = encoderSettings;
+    OFDMSettingsStruct decoderSettings = encoderSettings;
     decoderSettings.type = FFTW_FORWARD;
     
     OFDMCodec encoder(encoderSettings);
@@ -312,7 +275,6 @@ BOOST_AUTO_TEST_CASE(EncodeDecode)
 
     double * txData = (double*) calloc(prefixedSymbolSize, sizeof(double));
     double * rxSignal = (double*) calloc(rxSignalSize, sizeof(double));
-
 
     // Setup random byte generator
     srand( (unsigned)time( NULL ) );
@@ -369,7 +331,7 @@ BOOST_AUTO_TEST_CASE(TheorethicalSelfReceiving)
 {
     std::cout << "\n Theorethical Self-Receiveing Test\n" << std::endl;
     // OFDM Codec Settings
-    OFDMSettings encoderSettings;
+    OFDMSettingsStruct encoderSettings;
     encoderSettings.type = FFTW_BACKWARD;
     encoderSettings.EnergyDispersalSeed = 10;
     encoderSettings.nFFTPoints = 1024; 
@@ -378,7 +340,7 @@ BOOST_AUTO_TEST_CASE(TheorethicalSelfReceiving)
     encoderSettings.QAMSize = 2; 
     encoderSettings.PrefixSize = (size_t) ((encoderSettings.nFFTPoints*2)/4); // 1/4th of symbol
 
-    OFDMSettings decoderSettings = encoderSettings;
+    OFDMSettingsStruct decoderSettings = encoderSettings;
     decoderSettings.type = FFTW_FORWARD;
 
     // Calculate max nBytes 
@@ -486,30 +448,31 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
 {
     std::cout << "\nRecorded Self-Receiveing Test\n" << std::endl;
     // OFDM Codec Settings
-    OFDMSettings encoderSettings;
-    encoderSettings.type = FFTW_BACKWARD;
-    encoderSettings.EnergyDispersalSeed = 10;
-    encoderSettings.nFFTPoints = 1024; 
-    encoderSettings.PilotToneDistance = 16; 
-    encoderSettings.PilotToneAmplitude = 2.0; 
-    encoderSettings.QAMSize = 2; 
-    encoderSettings.PrefixSize = (size_t) ((encoderSettings.nFFTPoints*2)/4); // 1/4th of symbol
+    OFDMSettingsStruct encoderSettingsStruct;
+    encoderSettingsStruct.type = FFTW_BACKWARD;
+    encoderSettingsStruct.EnergyDispersalSeed = 10;
+    encoderSettingsStruct.nFFTPoints = 1024; 
+    encoderSettingsStruct.PilotToneDistance = 16; 
+    encoderSettingsStruct.PilotToneAmplitude = 2.0; 
+    encoderSettingsStruct.QAMSize = 2; 
+    encoderSettingsStruct.PrefixSize = (size_t) ((encoderSettingsStruct.nFFTPoints*2)/4); // 1/4th of symbol
+    encoderSettingsStruct.nDataBytesPerSymbol = 100;
 
-    OFDMSettings decoderSettings = encoderSettings;
-    decoderSettings.type = FFTW_FORWARD;
+    OFDMSettingsStruct decoderSettingsStruct = encoderSettingsStruct;
+    decoderSettingsStruct.type = FFTW_FORWARD;
 
     size_t nSymbolsToTx = 5;
 
     // Calculate max avaiable points in the symbol for data
-    size_t nAvaiablePoints = (encoderSettings.nFFTPoints - ((size_t)(encoderSettings.nFFTPoints / encoderSettings.PilotToneDistance)));
+    size_t nAvaiablePoints = (decoderSettingsStruct.nFFTPoints - ((size_t)(decoderSettingsStruct.nFFTPoints / decoderSettingsStruct.PilotToneDistance)));
     // Calculate number of bytes that can be encoded per symbol
-    size_t nBytes = ((nAvaiablePoints*encoderSettings.QAMSize) / 8);
+    size_t nBytes = ((nAvaiablePoints*decoderSettingsStruct.QAMSize) / 8);
     // But restrict The spectrum to half the number of avaiable bytes to account for poor speaker frequency response 
     //nBytes /= 2;
     // or Some specified value
     nBytes = 100;
     // Calculate prefixed symbol size 
-    size_t prefixedSymbolSize = (encoderSettings.nFFTPoints*2) + encoderSettings.PrefixSize;
+    size_t prefixedSymbolSize = (decoderSettingsStruct.nFFTPoints*2) + decoderSettingsStruct.PrefixSize;
 
     // rt audioSettings
     rtAudioSettings audioSettings;
@@ -522,7 +485,7 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
     audioSettings.OutputOffset = 0;
 
     // Initialize transceiver
-    AudioTrx trx(audioSettings, encoderSettings, decoderSettings, RECORDING);
+    AudioTrx trx(audioSettings, encoderSettingsStruct, decoderSettingsStruct, RECORDING);
 
     // Create input & output array
     uint8_t *txIn = (uint8_t*) calloc(nBytes*nSymbolsToTx, sizeof(uint8_t));
@@ -559,7 +522,7 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
     // Encode Symbols & Place them in buffer
     for (size_t i = 0; i < nSymbolsToTx; i++)
     {
-        trx.m_TxCallbackData.pCodec->Encode(&txIn[i*nBytes], &encodedplayback[i*prefixedSymbolSize], nBytes);
+        trx.m_TxCallbackData.pCodec->Encode(&txIn[i*nBytes], &encodedplayback[i*prefixedSymbolSize]);
         // Scale Output to be within +- 1;
         // Scaling this makes transmission inaudibly quiet
         //ScaleToAbsMax(&encodedplayback[i*prefixedSymbolSize], prefixedSymbolSize);
@@ -621,6 +584,7 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
 
     std::cout << "bufferCounter " << bufferCounter << std::endl;
     size_t byteErrorCount = 0;
+    size_t totalErrorByteCnt = 0;
     std::vector<double> symbolErrorCounter;
     for(size_t j = 0; j < nSymbolsToTx; j++)
     {
@@ -638,6 +602,7 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
             // Check if real and complex element match within defined precision of each other
             //BOOST_CHECK_MESSAGE( (txIn[i] == rxOut[i]), "Bytes difffer! Index = " << i ); 
         }
+        totalErrorByteCnt += byteErrorCount;
         symbolErrorCounter.push_back(byteErrorCount);
         std::cout <<  j  << " Symbol Error Count = " << byteErrorCount << std::endl;
     }
@@ -645,6 +610,11 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
     // Plot recorded & transmitted waveforms
     Plotbuffer(recorded, 20000);
     //Plotbuffer(encodedplayback, prefixedSymbolSize*nSymbolsToTx);
+    size_t nTotalBytes = (nBytes*nSymbolsToTx);
+    double percentByteErrorRate =  100.0 * (   ((double) totalErrorByteCnt / (double)nTotalBytes));
+    std::cout << "Total byte error rate is " << totalErrorByteCnt << "/"<< nBytes*nSymbolsToTx << " - " << percentByteErrorRate << " %" << std::endl;
+    double BER = ComputeBitErrorRatio(txIn, rxOut, nTotalBytes);
+    std::cout << "BER =  " << BER << std::endl;
 
 }
 */
@@ -654,20 +624,18 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
 BOOST_AUTO_TEST_CASE(RealTimeSelfReceiveing)
 {
     using namespace matplot;
- 
+    std::cout << "\nReal-time Self-Receiveing Test\n" << std::endl;
     // Load Test Image
     int width, height, bpp;
     uint8_t* txImg = stbi_load("txImg.png", &width, &height, &bpp, CHANNEL_NUM);
     size_t nBytesInImg = width*height*CHANNEL_NUM;
-    std::cout << " nBytesInImg = " << nBytesInImg << " sizeof(nBytesInImg) = " << sizeof(txImg) << std::endl;
+    std::cout << " nBytesInImg = " << nBytesInImg << std::endl;
 
     // Create Rx Buffer for decoded data
     uint8_t *rxImg = (uint8_t*) calloc(nBytesInImg, sizeof(uint8_t));
 
-
-    std::cout << "\nReal-time Self-Receiveing Test\n" << std::endl;
     // OFDM Codec Settings
-    OFDMSettings encoderSettings;
+    OFDMSettingsStruct encoderSettings;
     encoderSettings.type = FFTW_BACKWARD;
     encoderSettings.EnergyDispersalSeed = 10;
     encoderSettings.nFFTPoints = 1024; 
@@ -675,39 +643,21 @@ BOOST_AUTO_TEST_CASE(RealTimeSelfReceiveing)
     encoderSettings.PilotToneAmplitude = 2.0; 
     encoderSettings.QAMSize = 2; 
     encoderSettings.PrefixSize = (size_t) ((encoderSettings.nFFTPoints*2) /4); // 1/4th of symbol
+    encoderSettings.nDataBytesPerSymbol = 100;
 
-    OFDMSettings decoderSettings = encoderSettings;
+    OFDMSettingsStruct decoderSettings = encoderSettings;
     decoderSettings.type = FFTW_FORWARD;
-
-
 
     // Calculate max avaiable points in the symbol for data
     size_t nAvaiablePoints = (encoderSettings.nFFTPoints - ((size_t)(encoderSettings.nFFTPoints / encoderSettings.PilotToneDistance)));
     // Calculate number of bytes that can be encoded per symbol
     size_t nBytes = ((nAvaiablePoints*encoderSettings.QAMSize) / 8);
-    // But restrict The spectrum to half the number of avaiable bytes to account for poor speaker frequency response 
-    //nBytes /= 2;
-    // or some specified value
+    // But restrict The spectrum to account for poor speaker frequency response 
     nBytes = 100;
     // Calculate prefixed symbol size 
     size_t prefixedSymbolSize = (encoderSettings.nFFTPoints*2) + encoderSettings.PrefixSize;
 
     size_t nSymbolsToTx = nBytesInImg/nBytes;
-
-    /*
-    // Create input & output array
-    uint8_t *txIn = (uint8_t*) calloc(nBytes*nSymbolsToTx, sizeof(uint8_t));
-    uint8_t *rxOut = (uint8_t*) calloc(nBytes*nSymbolsToTx, sizeof(uint8_t));
-
-    // Setup random seed
-    srand( (unsigned)time( NULL ) );
-
-    // Generate array of random bytes
-    for (size_t i = 0; i < nBytes*nSymbolsToTx; i++)
-    {
-        txIn[i] = rand() % 255;
-    }
-    */
 
     // Configure rt audioSettings
     rtAudioSettings audioSettings;
@@ -748,22 +698,17 @@ BOOST_AUTO_TEST_CASE(RealTimeSelfReceiveing)
     // Measure failure rate
     size_t byteErrorCount = 0;
     size_t totalErrorByteCnt = 0;
-    std::vector<double> symbolErrorCounter;
+    DoubleVec symbolErrorCounter;
     for(size_t j = 0; j < nSymbolsToTx; j++)
     {
         byteErrorCount = 0;
         // Check if Decoding has been Successfull
         for(size_t i = j*nBytes; i < ((j+1)*nBytes); i++)
         {
-            // Print Tx and decoded Rx bytes
-            //printf("%lu Byte: %d vs. %d\n", i, txIn[i], rxImg[i]);
             if(txImg[i] != rxImg[i])
             {
                 byteErrorCount++;
             }
-            
-            // Check if real and complex element match within defined precision of each other
-            //BOOST_CHECK_MESSAGE( (txIn[i] == rxImg[i]), "Bytes difffer! Index = " << i ); 
         }
         symbolErrorCounter.push_back(byteErrorCount);
         totalErrorByteCnt += byteErrorCount;
@@ -772,11 +717,11 @@ BOOST_AUTO_TEST_CASE(RealTimeSelfReceiveing)
     size_t nTotalBytes = (nBytes*nSymbolsToTx);
     double percentByteErrorRate =  100.0 * (   ((double) totalErrorByteCnt / (double)nTotalBytes));
     std::cout << "Total byte error rate is " << totalErrorByteCnt << "/"<< nBytes*nSymbolsToTx << " - " << percentByteErrorRate << " %" << std::endl;
-
+    double BER = ComputeBitErrorRatio(txImg, rxImg, nTotalBytes);
+    std::cout << "BER =  " << BER << std::endl;
     stbi_write_jpg("rxImg.png", width, height, CHANNEL_NUM, rxImg, width * CHANNEL_NUM);
 
-    //stbi_image_free(rgb_image);
-}
+}    
 
 
 BOOST_AUTO_TEST_SUITE_END()

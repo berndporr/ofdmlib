@@ -99,8 +99,7 @@ int TxCallback( void *outputBuffer, void* /*inputBuffer*/, unsigned int /*nBuffe
         if(txCallbackData->nBytes >= txCallbackData->nBytesPerSymbol)
         {
           txCallbackData->pCodec->ProcessTxBuffer(&txCallbackData->txBuffer[txCallbackData->nTxByteCounter],
-                                  (double *) outputBuffer, 
-                                  txCallbackData->nBytesPerSymbol);
+                                  (double *) outputBuffer);
           txCallbackData->nBytes -= txCallbackData->nBytesPerSymbol;
           txCallbackData->nTxByteCounter += txCallbackData->nBytesPerSymbol;
         }
@@ -143,7 +142,7 @@ int RxCallback( void * /*outputBuffer*/, void *inputBuffer, unsigned int nBuffer
 * @param audioSettings 
 *
 */
-AudioTrx::AudioTrx(rtAudioSettings audioSettings, OFDMSettings encoderSettings, OFDMSettings decoderSettings, TRX_OPERATION_MODE operationMode) :
+AudioTrx::AudioTrx(rtAudioSettings audioSettings, OFDMSettingsStruct encoderSettings, OFDMSettingsStruct decoderSettings, TRX_OPERATION_MODE operationMode) :
     m_encoder(encoderSettings),
     m_decoder(decoderSettings),
     m_rtAudioSettings(audioSettings)
@@ -154,14 +153,12 @@ AudioTrx::AudioTrx(rtAudioSettings audioSettings, OFDMSettings encoderSettings, 
         std::cout << "\nError: dac, No audio devices found!\n";
         exit( 0 );
     }
-
     
     if ( adc.getDeviceCount() < 1 )
     {
         std::cout << "\nError: adc, No audio devices found!\n";
         exit( 0 );
     }
-
 
     // Let RtAudio print messages to stderr.
     dac.showWarnings( true );
@@ -232,6 +229,7 @@ AudioTrx::AudioTrx(rtAudioSettings audioSettings, OFDMSettings encoderSettings, 
     // Set the number of buffers for ALSA to use
     //m_StreamOptions.numberOfBuffers = 4;
 
+    // Open Tx & Rx streams
     OpenStreams(operationMode);
 
 }
@@ -239,6 +237,9 @@ AudioTrx::AudioTrx(rtAudioSettings audioSettings, OFDMSettings encoderSettings, 
 
 /**
 * Destructor 
+* Calls Stop Stream
+* The streams should already be closed 
+* if transcieiver is used correctly.
 *
 */
 AudioTrx::~AudioTrx()
@@ -250,8 +251,10 @@ AudioTrx::~AudioTrx()
 /**
 * Opens Tx & Rx audio streams 
 *
+*@param mode 
+*
 */
-void AudioTrx::OpenStreams(size_t mode)
+void AudioTrx::OpenStreams(TRX_OPERATION_MODE mode)
 {
 
 
@@ -320,12 +323,8 @@ void AudioTrx::OpenStreams(size_t mode)
 }
 
 
-
-
-
-
 /**
-*
+* Starts the Transmiter (Playback) Stream
 *
 */
 void AudioTrx::StartTxStream( )
@@ -344,7 +343,7 @@ void AudioTrx::StartTxStream( )
 
 
 /**
-*
+* Stop the Transmiter (Playback) Stream
 *
 */
 void AudioTrx::StopTxStream()
@@ -362,7 +361,7 @@ void AudioTrx::StopTxStream()
 
 
 /**
-*
+* Starts the Reciever (Recording) Stream
 *
 */
 void AudioTrx::StartRxStream()
@@ -380,7 +379,7 @@ void AudioTrx::StartRxStream()
 
 
 /**
-*
+* Stop the Receiver (Recording) Stream
 *
 */
 void AudioTrx::StopRxStream()

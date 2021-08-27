@@ -24,8 +24,18 @@
 
 using DoubleVec = std::vector<double>;
 using ByteVec = std::vector<uint8_t>;
+using SizeTVec = std::vector<size_t>;
 
-struct OFDMSettings
+/**
+* Modulation schemes for the data sub-carriers 
+* The variable is equivelent to the bits per symbol 
+*/
+typedef enum {
+	QAM_4 =  2,
+} MODULATION_SCHEME;
+
+
+struct OFDMSettingsStruct
 {
     int type; 
     size_t EnergyDispersalSeed; 
@@ -34,13 +44,16 @@ struct OFDMSettings
     double PilotToneAmplitude;      // The amplitude of the pilot tones
     size_t PrefixSize;              // Cyclic prefix size in time-domain samples
     size_t QAMSize;
+    size_t nDataBytesPerSymbol;
     // InputDataType  
 };
 
 
 struct DetectorSettings
 {
-    size_t Threshold;
+    double UpperThreshold;
+    double LowerThreshold;
+    size_t nSamplesLowLimit;
     size_t FineSearchRange; 
 };
 

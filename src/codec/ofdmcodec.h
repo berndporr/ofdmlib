@@ -15,9 +15,9 @@
 #include <stdlib.h>
 #include <iostream>
 #include <math.h>
-#include <fftw3.h>
 
 // Ofdmlib objects
+#include "ofdm-settings.h"
 #include "channel-estimator.h"
 #include "detector.h"             // Detector Contains the fft & nyquist definitions as include header
 #include "qam-modulator.h"
@@ -25,13 +25,13 @@
 
 
 
-
 /**
  * @brief OFDM codec object class
  * This object encapsulates the encoding 
  * and decoding functionlaity and settings for each
- * ofdm related object. It is esentially a wrapper around
- * all elements that make up ofdm modulation scheme.
+ * ofdm related object. It is esentially a wrapper 
+ * which chains functions to create Tx & Rx chain.
+ * for one symbol.
  * 
  */
 class OFDMCodec {
@@ -42,7 +42,7 @@ public:
 	* Constructor 
 	*
 	*/
-	OFDMCodec(OFDMSettings settingsStruct);
+	OFDMCodec(OFDMSettingsStruct settingsStruct);
 
     /**
 	* Destructor 
@@ -50,13 +50,14 @@ public:
 	*/
 	~OFDMCodec();
 
-    void Encode(const uint8_t *input, double *output, size_t nBytes);
+    void Encode(const uint8_t *input, double *output);
 
-    void Decode(const double *input, uint8_t *output, size_t nBytes);
+    void Decode(const double *input, uint8_t *output);
 
     size_t ProcessRxBuffer(const double *input, uint8_t *output, size_t nBytes);
-    void ProcessTxBuffer(const uint8_t *input, double *txBuffer, size_t nBytes);
+    void ProcessTxBuffer(const uint8_t *input, double *txBuffer);
 
+    //const OFDMSettingsStruct & GetSettings() const;
     const OFDMSettings & GetSettings() const;
 
 private:
@@ -74,21 +75,12 @@ private:
     QamModulator m_qam;
     ChannelEstimator m_Estimator;
 
-    size_t m_PrefixedSymbolSize;
-
-
-
-
 };
 
 
 /**
- * @brief OFDM codec object class
- * This object encapsulates the encoding 
- * and decoding functionlaity and settings for each
- * ofdm related object. It is esentially a wrapper around
- * all elements that make up ofdm modulation scheme.
- * 
+ * Returns constant reference to the OFDMSettings 
+ * object
  */
 inline const OFDMSettings & OFDMCodec::GetSettings() const
 {

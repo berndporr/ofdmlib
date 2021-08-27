@@ -7,6 +7,7 @@
 #ifndef NYQUIST_MODULATOR_H
 #define NYQUIST_MODULATOR_H
 
+#include "ofdm-settings.h"
 #include <string>
 #include <unistd.h>
 #include <stdint.h>
@@ -20,7 +21,7 @@
 #include "common.h"
 
 /**
- * @brief Digital nyquist quadrature modulator & demodulaor class
+ * @brief Digital Nyquist quadrature modulator & demodulaor class
  * which upsamples/downsamples the signal at a factor of 2
  * The modulation esentially inteleaves the inphase and 
  * quadrature signals in the folllwing fashion:
@@ -42,7 +43,7 @@ public:
 	* @param OFDMSettings
 	*
 	*/
-	NyquistModulator(OFDMSettings &settings);
+	NyquistModulator(const OFDMSettings &settings);
 
 
 	/**
@@ -56,12 +57,16 @@ public:
 	void Modulate(double *ifftOutput);
 	void Demodulate(double *rxBuffer, fftw_complex *pFFTInput, const size_t symbolStart);
 
+	
+public: 
+
+	size_t m_RingBufferBoundary;
 
 private:
 
-	OFDMSettings &m_ofdmSettings;
-	size_t m_RingBufferBoundary;
+	const OFDMSettings &m_ofdmSettings;
 	double *m_TempBuffer;
+
 
 };
 

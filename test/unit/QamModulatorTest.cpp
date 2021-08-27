@@ -39,37 +39,35 @@ BOOST_AUTO_TEST_CASE(QamModToDemod)
     printf("\nMdoulator:\n");
 
     // OFDM Codec Settings
-    OFDMSettings encoderSettings;
-    encoderSettings.type = FFTW_BACKWARD;
-    encoderSettings.EnergyDispersalSeed = 10;
-    encoderSettings.nFFTPoints = 1024; 
-    encoderSettings.PilotToneDistance = 16; 
-    encoderSettings.PilotToneAmplitude = 2.0; 
-    encoderSettings.QAMSize = 2; 
-    encoderSettings.PrefixSize = (int) ((encoderSettings.nFFTPoints*2)/4); // 1/4th of symbol
+    OFDMSettingsStruct encoderSettingsStruct;
+    encoderSettingsStruct.type = FFTW_BACKWARD;
+    encoderSettingsStruct.EnergyDispersalSeed = 10;
+    encoderSettingsStruct.nFFTPoints = 1024; 
+    encoderSettingsStruct.PilotToneDistance = 16; 
+    encoderSettingsStruct.PilotToneAmplitude = 2.0; 
+    encoderSettingsStruct.QAMSize = 2; 
+    encoderSettingsStruct.PrefixSize = (size_t) ((encoderSettingsStruct.nFFTPoints*2)/4); // 1/4th of symbol
+    encoderSettingsStruct.nDataBytesPerSymbol = 100;
 
-    size_t nAvaiableifftPoints = (encoderSettings.nFFTPoints - (size_t)(encoderSettings.nFFTPoints/encoderSettings.PilotToneDistance));
-    size_t nMaxEncodedBytes = (int)((nAvaiableifftPoints *  BITS_PER_FREQ_POINT)  / BITS_IN_BYTE);
-    size_t nData = nMaxEncodedBytes;
+    OFDMSettings encoderSettings(encoderSettingsStruct);
 
-    std::cout << "nMaxEncodedBytes = " << nMaxEncodedBytes << std::endl;
+    std::cout << "m_nDataBytesPerSymbol = " <<  encoderSettings.m_nDataBytesPerSymbol << std::endl;
     // Setup random float generator
     srand( (unsigned)time( NULL ) );
 
-    uint8_t * TxCharArray = (uint8_t*) calloc(nData, sizeof(uint8_t));
-    uint8_t * RxCharArray = (uint8_t*) calloc(nData, sizeof(uint8_t));
+    uint8_t * TxCharArray = (uint8_t*) calloc( encoderSettings.m_nDataBytesPerSymbol, sizeof(uint8_t));
+    uint8_t * RxCharArray = (uint8_t*) calloc( encoderSettings.m_nDataBytesPerSymbol, sizeof(uint8_t));
 
-    for(size_t i = 0; i < nData; i++ )
+    for(size_t i = 0; i <  encoderSettings.m_nDataBytesPerSymbol; i++ )
     {
         TxCharArray[i] = (unsigned char) rand() % 255;
     }
 
-    DoubleVec QamOutput(encoderSettings.nFFTPoints*2);
-
+    fftw_complex *QamDemodulatorOutput = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * encoderSettings.m_nFFTPoints);
     QamModulator qam(encoderSettings);
 
     auto start = std::chrono::steady_clock::now();
-    qam.Modulate(TxCharArray, QamOutput, nData);
+    qam.Modulate(TxCharArray, QamDemodulatorOutput);
     auto end = std::chrono::steady_clock::now();
 
     std::cout << "QAM Modulator elapsed time: "
@@ -79,14 +77,14 @@ BOOST_AUTO_TEST_CASE(QamModToDemod)
     printf("\nDemodulator:\n");
 
     start = std::chrono::steady_clock::now();
-    qam.Demodulate(QamOutput, RxCharArray, nData);
+    qam.Demodulate(QamDemodulatorOutput, RxCharArray);
     end = std::chrono::steady_clock::now();
 
     std::cout << "QAM Demodulator elapsed time: "
     << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
     << " ns" << std::endl;
     
-    for(size_t i = 0; i < nData; i++)
+    for(size_t i = 0; i < encoderSettings.m_nDataBytesPerSymbol; i++)
     {
         //printf("TxCharArray[%lu] = %d ,RxCharArray[%lu] = %d\n"
         //,i,(int)TxCharArray[i] ,i, (int)RxCharArray[i] );

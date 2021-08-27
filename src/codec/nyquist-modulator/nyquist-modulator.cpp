@@ -16,15 +16,15 @@
 * @param settings
 *
 */
-NyquistModulator::NyquistModulator(OFDMSettings &settings) :
+NyquistModulator::NyquistModulator(const OFDMSettings &settings) :
     m_ofdmSettings(settings)
 {
-    m_RingBufferBoundary = 7680;
+    m_RingBufferBoundary = m_ofdmSettings.m_PrefixedSymbolSize*3;
     // Allocate memory for a temporary buffer
     // For the edge case where the symbol spans across 
     // end and start of the ring buffer
     // TODO: Asses whether the if statements are faster
-    m_TempBuffer = (double*) calloc((m_ofdmSettings.nFFTPoints*2), sizeof(double));
+    m_TempBuffer = (double*) calloc((m_ofdmSettings.m_SymbolSize), sizeof(double));
 }
 
 
@@ -35,7 +35,7 @@ NyquistModulator::NyquistModulator(OFDMSettings &settings) :
 */
 NyquistModulator::~NyquistModulator()
 {
-
+    free(m_TempBuffer);
 }
 
 
@@ -52,14 +52,13 @@ NyquistModulator::~NyquistModulator()
 */  
 void NyquistModulator::Modulate(double *ifftOutput)
 {
-    
-    size_t symbolSize = m_ofdmSettings.nFFTPoints * 2;
+
     // If the nPoints is even
-    if( (m_ofdmSettings.nFFTPoints % 2) == 0)
+    if( (m_ofdmSettings.m_nFFTPoints % 2) == 0)
     {      
         // Initialize double buffer counter
         // For each every other real img pair skipping first fft point which remains unchanged
-        for(size_t i = 2; i < symbolSize; i+=4)
+        for(size_t i = 2; i < m_ofdmSettings.m_SymbolSize; i+=4)
         {
             // Negate the value
             ifftOutput[i] = -ifftOutput[i];
@@ -73,7 +72,7 @@ void NyquistModulator::Modulate(double *ifftOutput)
         int s = 1;
         // Initialize double buffer counter
         size_t j = 0;
-        for(size_t i = 0; i < m_ofdmSettings.nFFTPoints; i++) 
+        for(size_t i = 0; i < m_ofdmSettings.m_nFFTPoints; i++) 
         {
             // Copy the real part of the sample and multiply by s factor
             ifftOutput[j] *= s;
@@ -104,12 +103,11 @@ void NyquistModulator::Demodulate(double *rxBuffer, fftw_complex *pFFTInput, con
 {
     
     double *pRxBuffer = nullptr;
-    size_t symbolSize = m_ofdmSettings.nFFTPoints*2;
     // Initialize double buffer counter
     size_t j = symbolStart;
     // If symbol lies across the end edge of the buffer.
     // Use temporary buffer to allign the symbol for demodulation
-    if( symbolStart >= (m_RingBufferBoundary - symbolSize))
+    if( symbolStart >= (m_RingBufferBoundary - m_ofdmSettings.m_SymbolSize))
     {
         //std::cout << " Demodulator Edge Case!" << std::endl;
         // Calculate the number elements of the symbol untill boundary of the ring buffer
@@ -117,9 +115,9 @@ void NyquistModulator::Demodulate(double *rxBuffer, fftw_complex *pFFTInput, con
         // Copy samples
         memcpy( &m_TempBuffer[0], &rxBuffer[symbolStart], nToBoundary*sizeof(double));
         // Calculate the number elements of the symbol over boundary of the ring buffer
-        size_t nOverBoundary = symbolSize - nToBoundary;
+        size_t nOverBoundary = m_ofdmSettings.m_SymbolSize - nToBoundary;
         // Copy samples
-        memcpy(&m_TempBuffer[nToBoundary], &rxBuffer[0], nOverBoundary*sizeof(double));
+        memcpy(&m_TempBuffer[nToBoundary], &rxBuffer[0], nOverBoundary*sizeof(double)); // This breaks
         //std::cout << " Demodulator Addition = " << nOverBoundary + nToBoundary << std::endl;
         // Assign Pointer
         pRxBuffer = m_TempBuffer;
@@ -135,10 +133,10 @@ void NyquistModulator::Demodulate(double *rxBuffer, fftw_complex *pFFTInput, con
     
 
     // If the nPoints is even
-    if(m_ofdmSettings.nFFTPoints % 2 == 0)
+    if(m_ofdmSettings.m_nFFTPoints % 2 == 0)
     {
         // For each expected FFT sample point
-        for (size_t i = 0; i < m_ofdmSettings.nFFTPoints; i += 2)
+        for (size_t i = 0; i < m_ofdmSettings.m_nFFTPoints; i += 2)
         {
             // Copy first sample's real and img respectivley
             pFFTInput[i][0] = pRxBuffer[j];
@@ -158,7 +156,7 @@ void NyquistModulator::Demodulate(double *rxBuffer, fftw_complex *pFFTInput, con
         // Initialize +1 / -1 multiplier
         int s = 1;
         // For each expected FFT sample point
-        for(size_t i = 0; i < m_ofdmSettings.nFFTPoints; i++)
+        for(size_t i = 0; i < m_ofdmSettings.m_nFFTPoints; i++)
         {
             // Copy the real part of the sample and multiply by s factor
             pFFTInput[i][0] = s * pRxBuffer[j];

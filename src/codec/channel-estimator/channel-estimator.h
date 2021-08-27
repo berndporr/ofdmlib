@@ -8,6 +8,7 @@
 #ifndef CHANNEL_ESTIMATOR
 #define CHANNEL_ESTIMATOR
 
+#include "ofdm-settings.h"
 #include <string>
 #include <unistd.h>
 #include <stdint.h>
@@ -19,9 +20,6 @@
 
 #include "common.h"
 
-#define BITS_IN_BYTE            8
-#define BITS_PER_FREQ_POINT     2
-#define FREQ_POINTS_PER_BYTE    4
 
 /**
  * @brief Channel Estimator Object
@@ -35,7 +33,7 @@ public:
 	* Constructor 
 	*
 	*/
-	ChannelEstimator(OFDMSettings settingsStruct);
+	ChannelEstimator(const OFDMSettings settings);
 
     /**
 	* Destructor 
@@ -43,12 +41,13 @@ public:
 	*/
 	~ChannelEstimator();
 
-    void PhaseCompenstator(fftw_complex *pFFTOutput, size_t nBytes);
+    void PhaseCompenstator(fftw_complex *pFFTOutput);
     //void FrequencyDomainInterpolation(double *pFFTOutput, size_t nBytes);
 
 private:
 
-    OFDMSettings m_Settings;
+    const OFDMSettings m_Settings;
+	DoubleVec InterpolationFactors;
 
 };
 

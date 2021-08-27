@@ -37,8 +37,10 @@ set(INCLUDE_DIRS
 set(SOURCE_FILE    
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/fft/fft.cpp 
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/nyquist-modulator/nyquist-modulator.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/detector/accumulator.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/detector/detector.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/utils/gnuplot-iostream.h
+   ${CMAKE_CURRENT_SOURCE_DIR}/codec/ofdm-settings.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/ofdmcodec.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/demo/trx.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/codec/channel-estimator/channel-estimator.cpp

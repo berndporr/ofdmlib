@@ -44,23 +44,26 @@ BOOST_AUTO_TEST_CASE(IFFTtoFFT)
     // Setup random float generator
     srand( (unsigned)time( NULL ) );
 
-    OFDMSettings encoderSettings;
-    encoderSettings.type = FFTW_BACKWARD;
-    encoderSettings.EnergyDispersalSeed = 10;
-    encoderSettings.nFFTPoints = 1024; 
-    encoderSettings.PilotToneDistance = 16; 
-    encoderSettings.PilotToneAmplitude = 2.0; 
-    encoderSettings.QAMSize = 2; 
-    encoderSettings.PrefixSize = (size_t) ((encoderSettings.nFFTPoints*2)/4); // 1/4th of symbol
+    OFDMSettingsStruct encoderSettingsStruct;
+    encoderSettingsStruct.type = FFTW_BACKWARD;
+    encoderSettingsStruct.EnergyDispersalSeed = 10;
+    encoderSettingsStruct.nFFTPoints = 1024; 
+    encoderSettingsStruct.PilotToneDistance = 16; 
+    encoderSettingsStruct.PilotToneAmplitude = 2.0; 
+    encoderSettingsStruct.QAMSize = 2; 
+    encoderSettingsStruct.PrefixSize = (size_t) ((encoderSettingsStruct.nFFTPoints*2)/4); // 1/4th of symbol
 
-    OFDMSettings decoderSettings = encoderSettings;
-    decoderSettings.type = FFTW_FORWARD;
+    OFDMSettingsStruct decoderSettingsStruct = encoderSettingsStruct;
+    decoderSettingsStruct.type = FFTW_FORWARD;
+
+    OFDMSettings encoderSettings(encoderSettingsStruct);
+    OFDMSettings decoderSettings(decoderSettingsStruct);
 
     FFT ifft(encoderSettings);
     FFT fft(decoderSettings);
 
     // Generate random floats 
-    for (size_t i = 0; i < encoderSettings.nFFTPoints; i++)
+    for (size_t i = 0; i < encoderSettings.m_nFFTPoints; i++)
     {
         ifft.in[i][0] = (double) rand()/RAND_MAX;
         ifft.in[i][1] = (double) rand()/RAND_MAX;
@@ -84,7 +87,7 @@ BOOST_AUTO_TEST_CASE(IFFTtoFFT)
 
     printf("\nFourier Transform:\n");
     // Assign the output of ifft to the input of fft
-    for (size_t i = 0; i < encoderSettings.nFFTPoints ; i++)
+    for (size_t i = 0; i < encoderSettings.m_nFFTPoints ; i++)
     {
         fft.in[i][0] = ifft.out[i][0];
         fft.in[i][1] = ifft.out[i][1];
@@ -100,14 +103,10 @@ BOOST_AUTO_TEST_CASE(IFFTtoFFT)
         << " ns" << std::endl;
 
     // Normalize samples
-    for (size_t i = 0; i < encoderSettings.nFFTPoints ; i++)
-    {
-        fft.out[i][0] *= 1./encoderSettings.nFFTPoints;
-        fft.out[i][1] *= 1./encoderSettings.nFFTPoints;
-    }
+    fft.Normalise();  // TODO: Check this works
 
     // Print input and output buffers
-    for (size_t i = 0; i < encoderSettings.nFFTPoints ; i++)
+    for (size_t i = 0; i < encoderSettings.m_nFFTPoints ; i++)
     {
         /*
         printf("Recovered Sample(time domain) %3d %+9.5f j%+9.5f Input to IFFT vs. %+9.5f j%+9.5f Output of FFT\n",
@@ -141,43 +140,46 @@ BOOST_AUTO_TEST_CASE(IFFTtoFFTCosine)
     // Setup random float generator
     srand( (unsigned)time( NULL ) );
 
-    OFDMSettings encoderSettings;
-    encoderSettings.type = FFTW_BACKWARD;
-    encoderSettings.EnergyDispersalSeed = 10;
-    encoderSettings.nFFTPoints = 1024; 
-    encoderSettings.PilotToneDistance = 16; 
-    encoderSettings.PilotToneAmplitude = 2.0; 
-    encoderSettings.QAMSize = 2; 
-    encoderSettings.PrefixSize = (int) ((encoderSettings.nFFTPoints*2)/4); // 1/4th of symbol
+    OFDMSettingsStruct encoderSettingsStruct;
+    encoderSettingsStruct.type = FFTW_BACKWARD;
+    encoderSettingsStruct.EnergyDispersalSeed = 10;
+    encoderSettingsStruct.nFFTPoints = 1024; 
+    encoderSettingsStruct.PilotToneDistance = 16; 
+    encoderSettingsStruct.PilotToneAmplitude = 2.0; 
+    encoderSettingsStruct.QAMSize = 2; 
+    encoderSettingsStruct.PrefixSize = (size_t) ((encoderSettingsStruct.nFFTPoints*2)/4); // 1/4th of symbol
 
-    OFDMSettings decoderSettings = encoderSettings;
-    decoderSettings.type = FFTW_FORWARD;
+    OFDMSettingsStruct decoderSettingsStruct = encoderSettingsStruct;
+    decoderSettingsStruct.type = FFTW_FORWARD;
+
+    OFDMSettings encoderSettings(encoderSettingsStruct);
+    OFDMSettings decoderSettings(decoderSettingsStruct);
 
     FFT ifft(encoderSettings);
     FFT fft(decoderSettings);
-
-    for(size_t j = 0; j < encoderSettings.nFFTPoints ; j++)
+    
+    for(size_t j = 0; j < encoderSettings.m_nFFTPoints ; j++)
     {
         // Generate Cosine wave in freq domain
-        for(size_t i = 1; i < encoderSettings.nFFTPoints ; i++)
+        for(size_t i = 1; i < encoderSettings.m_nFFTPoints ; i++)
         {
             // Insert value at desired frequency
             if (i == j)
             {
-                ifft.in[i][0] = encoderSettings.nFFTPoints /2;
+                ifft.in[i][0] = encoderSettings.m_nFFTPoints /2;
                 ifft.in[i][1] = 0; 
             }
 
             // Modify the negative frequency
-            else if (i == encoderSettings.nFFTPoints -j)
+            else if (i == encoderSettings.m_nFFTPoints -j)
             {
-                ifft.in[i][0] = encoderSettings.nFFTPoints /2;
+                ifft.in[i][0] = encoderSettings.m_nFFTPoints /2;
                 ifft.in[i][1] = 0; 
             }
             // Fill with 0 otherwise
             else
             {
-                ifft.in[i][0] = encoderSettings.nFFTPoints/2;
+                ifft.in[i][0] = encoderSettings.m_nFFTPoints/2;
                 ifft.in[i][1] = 0;     
             }
 
@@ -208,7 +210,7 @@ BOOST_AUTO_TEST_CASE(IFFTtoFFTCosine)
         // Fourier Transform
         // printf("\nFourier Transform:\n");
         // Assign the output of forward fft to the input of backward fft
-        for (size_t i = 0; i < encoderSettings.nFFTPoints ; i++)
+        for (size_t i = 0; i < encoderSettings.m_nFFTPoints ; i++)
         {
             fft.in[i][0] = ifft.out[i][0];
             fft.in[i][1] = ifft.out[i][1];
@@ -227,7 +229,7 @@ BOOST_AUTO_TEST_CASE(IFFTtoFFTCosine)
         */
 
         // Print input and output buffers
-        for (size_t i = 0; i < encoderSettings.nFFTPoints ; i++)
+        for (size_t i = 0; i < encoderSettings.m_nFFTPoints ; i++)
         {
             // Check if real and complex element match within defined precision.
             BOOST_CHECK_MESSAGE(
@@ -253,17 +255,20 @@ BOOST_AUTO_TEST_CASE(FFTtoIFFT)
     printf("\nTesting FFT to IFFT...\n");
     printf("\nFourier transform:\n");
 
-    OFDMSettings encoderSettings;
-    encoderSettings.type = FFTW_BACKWARD;
-    encoderSettings.EnergyDispersalSeed = 10;
-    encoderSettings.nFFTPoints = 1024; 
-    encoderSettings.PilotToneDistance = 16; 
-    encoderSettings.PilotToneAmplitude = 2.0; 
-    encoderSettings.QAMSize = 2; 
-    encoderSettings.PrefixSize = (int) ((encoderSettings.nFFTPoints*2)/4); // 1/4th of symbol
+    OFDMSettingsStruct encoderSettingsStruct;
+    encoderSettingsStruct.type = FFTW_BACKWARD;
+    encoderSettingsStruct.EnergyDispersalSeed = 10;
+    encoderSettingsStruct.nFFTPoints = 1024; 
+    encoderSettingsStruct.PilotToneDistance = 16; 
+    encoderSettingsStruct.PilotToneAmplitude = 2.0; 
+    encoderSettingsStruct.QAMSize = 2; 
+    encoderSettingsStruct.PrefixSize = (size_t) ((encoderSettingsStruct.nFFTPoints*2)/4); // 1/4th of symbol
 
-    OFDMSettings decoderSettings = encoderSettings;
-    decoderSettings.type = FFTW_FORWARD;
+    OFDMSettingsStruct decoderSettingsStruct = encoderSettingsStruct;
+    decoderSettingsStruct.type = FFTW_FORWARD;
+
+    OFDMSettings encoderSettings(encoderSettingsStruct);
+    OFDMSettings decoderSettings(decoderSettingsStruct);
 
     // Setup random float generator
     srand( (unsigned)time( NULL ) );
@@ -272,7 +277,7 @@ BOOST_AUTO_TEST_CASE(FFTtoIFFT)
     FFT backwardfft(encoderSettings);
 
     // Generate random floats 
-    for (size_t i = 0; i < encoderSettings.nFFTPoints; i++)
+    for (size_t i = 0; i < encoderSettings.m_nFFTPoints; i++)
     {
         forwardfft.in[i][0] = (double) rand()/RAND_MAX;
         forwardfft.in[i][1] = (double) rand()/RAND_MAX;
@@ -297,7 +302,7 @@ BOOST_AUTO_TEST_CASE(FFTtoIFFT)
 
     printf("\nInverse Fourier Transform:\n");
     // Assign the output of forward fft to the input of backward fft
-    for (size_t i = 0; i < encoderSettings.nFFTPoints; i++)
+    for (size_t i = 0; i < encoderSettings.m_nFFTPoints; i++)
     {
         backwardfft.in[i][0] = forwardfft.out[i][0];
         backwardfft.in[i][1] = forwardfft.out[i][1];
@@ -313,14 +318,14 @@ BOOST_AUTO_TEST_CASE(FFTtoIFFT)
         << " ns" << std::endl;
 
     // Normalize samples
-    for (size_t i = 0; i < encoderSettings.nFFTPoints; i++)
+    for (size_t i = 0; i < encoderSettings.m_nFFTPoints; i++)
     {
-        backwardfft.out[i][0] *= 1./encoderSettings.nFFTPoints;
-        backwardfft.out[i][1] *= 1./encoderSettings.nFFTPoints;
+        backwardfft.out[i][0] *= 1./encoderSettings.m_nFFTPoints;
+        backwardfft.out[i][1] *= 1./encoderSettings.m_nFFTPoints;
     }
 
     // Print input and output buffers
-    for (size_t i = 0; i < encoderSettings.nFFTPoints; i++)
+    for (size_t i = 0; i < encoderSettings.m_nFFTPoints; i++)
     {
         //printf("Recovered Sample(time domain) %3d %+9.5f j%+9.5f Input to fft vs. %+9.5f j%+9.5f Output of IFFT\n",
         //i, forwardfft.in[i][0], forwardfft.in[i][1], backwardfft.out[i][0], backwardfft.out[i][1]);
@@ -351,28 +356,31 @@ BOOST_AUTO_TEST_CASE(FFTtoIFFTCosine)
     srand( (unsigned)time( NULL ) );
 
     // OFDM Codec Settings
-    OFDMSettings encoderSettings;
-    encoderSettings.type = FFTW_BACKWARD;
-    encoderSettings.EnergyDispersalSeed = 10;
-    encoderSettings.nFFTPoints = 1024; 
-    encoderSettings.PilotToneDistance = 16; 
-    encoderSettings.PilotToneAmplitude = 2.0; 
-    encoderSettings.QAMSize = 2; 
-    encoderSettings.PrefixSize = (int) ((encoderSettings.nFFTPoints*2)/4); // 1/4th of symbol
+    OFDMSettingsStruct encoderSettingsStruct;
+    encoderSettingsStruct.type = FFTW_BACKWARD;
+    encoderSettingsStruct.EnergyDispersalSeed = 10;
+    encoderSettingsStruct.nFFTPoints = 1024; 
+    encoderSettingsStruct.PilotToneDistance = 16; 
+    encoderSettingsStruct.PilotToneAmplitude = 2.0; 
+    encoderSettingsStruct.QAMSize = 2; 
+    encoderSettingsStruct.PrefixSize = (size_t) ((encoderSettingsStruct.nFFTPoints*2)/4); // 1/4th of symbol
 
-    OFDMSettings decoderSettings = encoderSettings;
-    decoderSettings.type = FFTW_FORWARD;
+    OFDMSettingsStruct decoderSettingsStruct = encoderSettingsStruct;
+    decoderSettingsStruct.type = FFTW_FORWARD;
+
+    OFDMSettings encoderSettings(encoderSettingsStruct);
+    OFDMSettings decoderSettings(decoderSettingsStruct);
 
 
     FFT forwardfft(decoderSettings);
     FFT backwardfft(encoderSettings);
 
-    for(size_t j = 0; j < encoderSettings.nFFTPoints; j++)
+    for(size_t j = 0; j < encoderSettings.m_nFFTPoints; j++)
     {
         // Generate Cosine wave in time domain
-        for(size_t i = 0; i < encoderSettings.nFFTPoints; i++)
+        for(size_t i = 0; i < encoderSettings.m_nFFTPoints; i++)
         {
-            forwardfft.in[i][0] = cos(j * 2*M_PI*i/encoderSettings.nFFTPoints);
+            forwardfft.in[i][0] = cos(j * 2*M_PI*i/encoderSettings.m_nFFTPoints);
             forwardfft.in[i][1] = 0; 
         }
 
@@ -392,7 +400,7 @@ BOOST_AUTO_TEST_CASE(FFTtoIFFTCosine)
         */
 
         // Print fft data
-        for (size_t i = 1; i < encoderSettings.nFFTPoints; i++)
+        for (size_t i = 1; i < encoderSettings.m_nFFTPoints; i++)
         {
             //printf("Freq: %3d %+9.5f j%+9.5f \n", i, forwardfft.out[i][0], forwardfft.out[i][1]);
             
@@ -402,7 +410,7 @@ BOOST_AUTO_TEST_CASE(FFTtoIFFTCosine)
                 BOOST_CHECK_MESSAGE( ( forwardfft.out[i][0] > FFT_NUMERICAL_THRESHOLD ), 
                 "Value is below threshold! - Occured at: index j = " << j << " & Index i = " << i );  
             }
-            else if(i == (encoderSettings.nFFTPoints -j))
+            else if(i == (encoderSettings.m_nFFTPoints -j))
             {
                 // Check if real and complex element match within defined precision.
                 BOOST_CHECK_MESSAGE( ( forwardfft.out[i][0] > FFT_NUMERICAL_THRESHOLD ), 
@@ -419,7 +427,7 @@ BOOST_AUTO_TEST_CASE(FFTtoIFFTCosine)
         // Inverse Fourier Transform
         // printf("\nInverse Fourier Transform:\n");
         // Assign the output of forward fft to the input of backward fft
-        for (size_t i = 0; i < encoderSettings.nFFTPoints; i++)
+        for (size_t i = 0; i < encoderSettings.m_nFFTPoints; i++)
         {
             backwardfft.in[i][0] = forwardfft.out[i][0];
             backwardfft.in[i][1] = forwardfft.out[i][1];
@@ -438,14 +446,14 @@ BOOST_AUTO_TEST_CASE(FFTtoIFFTCosine)
         */
 
         // Normalize 
-        for (size_t i = 0; i < encoderSettings.nFFTPoints; i++)
+        for (size_t i = 0; i < encoderSettings.m_nFFTPoints; i++)
         {
-            backwardfft.out[i][0] *= 1./encoderSettings.nFFTPoints;
-            backwardfft.out[i][1] *= 1./encoderSettings.nFFTPoints;
+            backwardfft.out[i][0] *= 1./encoderSettings.m_nFFTPoints;
+            backwardfft.out[i][1] *= 1./encoderSettings.m_nFFTPoints;
         }
 
         // Print input and output buffers
-        for (size_t i = 0; i < encoderSettings.nFFTPoints; i++)
+        for (size_t i = 0; i < encoderSettings.m_nFFTPoints; i++)
         {
             // Check if real and complex element match within defined precision.
             BOOST_CHECK_MESSAGE(
@@ -474,17 +482,20 @@ BOOST_AUTO_TEST_CASE(Reconfiguration)
     srand( (unsigned)time( NULL ) );
 
     // OFDM Codec Settings
-    OFDMSettings encoderSettings;
-    encoderSettings.type = FFTW_BACKWARD;
-    encoderSettings.EnergyDispersalSeed = 10;
-    encoderSettings.nFFTPoints = 1024;
-    encoderSettings.PilotToneDistance = 16;
-    encoderSettings.PilotToneAmplitude = 2.0;
-    encoderSettings.QAMSize = 2;
-    encoderSettings.PrefixSize = (int) ((encoderSettings.nFFTPoints*2)/4); // 1/4th of symbol
+    OFDMSettingsStruct encoderSettingsStruct;
+    encoderSettingsStruct.type = FFTW_BACKWARD;
+    encoderSettingsStruct.EnergyDispersalSeed = 10;
+    encoderSettingsStruct.nFFTPoints = 1024; 
+    encoderSettingsStruct.PilotToneDistance = 16; 
+    encoderSettingsStruct.PilotToneAmplitude = 2.0; 
+    encoderSettingsStruct.QAMSize = 2; 
+    encoderSettingsStruct.PrefixSize = (size_t) ((encoderSettingsStruct.nFFTPoints*2)/4); // 1/4th of symbol
 
-    OFDMSettings decoderSettings = encoderSettings;
-    decoderSettings.type = FFTW_FORWARD;
+    OFDMSettingsStruct decoderSettingsStruct = encoderSettingsStruct;
+    decoderSettingsStruct.type = FFTW_FORWARD;
+
+    OFDMSettings encoderSettings(encoderSettingsStruct);
+    OFDMSettings decoderSettings(decoderSettingsStruct);
 
     // Initialize fft object with size of 1 
     FFT forwardfft(decoderSettings);
@@ -497,8 +508,8 @@ BOOST_AUTO_TEST_CASE(Reconfiguration)
     for(size_t j = 0; j < nTestSizes; j++)
     {
         printf("\nTesting %lu Point FFT\n",PowOf2Arr[j]);
-        encoderSettings.nFFTPoints = PowOf2Arr[j];
-        decoderSettings.nFFTPoints = PowOf2Arr[j];
+        encoderSettings.m_nFFTPoints = PowOf2Arr[j];
+        decoderSettings.m_nFFTPoints = PowOf2Arr[j];
         forwardfft.Configure();
         backwardfft.Configure();
         // Generate random floats 

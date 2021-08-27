@@ -40,291 +40,509 @@ BOOST_AUTO_TEST_SUITE(DetectorTest)
 
 
 /**
+* Generates random prefixed symbol and 
+* stores it for every possible position
+* in the ring buffer. The correlator values
+* are calculated for the whole ring buffer and 
+* an evaluation of the peak element is carried out 
 * 
 */
 BOOST_AUTO_TEST_CASE(CorrelatorTest)
 {
     printf("\nTesting Correlator...\n");
-
     // OFDM Codec Settings
-    OFDMSettings encoderSettings;
-    encoderSettings.type = FFTW_BACKWARD;
-    encoderSettings.EnergyDispersalSeed = 10;
-    encoderSettings.nFFTPoints = 1024; 
-    encoderSettings.PilotToneDistance = 16; 
-    encoderSettings.PilotToneAmplitude = 2.0; 
-    encoderSettings.QAMSize = 2; 
-    encoderSettings.PrefixSize = (size_t) ((encoderSettings.nFFTPoints*2)/4); // 1/4th of symbol
+    OFDMSettingsStruct encoderSettingsStruct;
+    encoderSettingsStruct.type = FFTW_BACKWARD;
+    encoderSettingsStruct.EnergyDispersalSeed = 10;
+    encoderSettingsStruct.nFFTPoints = 1024; 
+    encoderSettingsStruct.PilotToneDistance = 16; 
+    encoderSettingsStruct.PilotToneAmplitude = 2.0; 
+    encoderSettingsStruct.QAMSize = 2; 
+    encoderSettingsStruct.PrefixSize = (size_t) ((encoderSettingsStruct.nFFTPoints*2)/4); // 1/4th of symbol
+    encoderSettingsStruct.nDataBytesPerSymbol = 100;
 
-    OFDMSettings decoderSettings = encoderSettings;
-    decoderSettings.type = FFTW_FORWARD;
+    OFDMSettingsStruct decoderSettingsStruct = encoderSettingsStruct;
+    decoderSettingsStruct.type = FFTW_FORWARD;
 
-    size_t symbolSize = decoderSettings.nFFTPoints*2;
-    size_t prefixedSymbolSize = symbolSize + decoderSettings.PrefixSize;
-
-    size_t nAvaiableifftPoints = (decoderSettings.nFFTPoints - (size_t)(decoderSettings.nFFTPoints/decoderSettings.PilotToneDistance));
-    size_t nMaxEncodedBytes = (size_t)((nAvaiableifftPoints *  BITS_PER_FREQ_POINT)  / BITS_IN_BYTE);
-    size_t nData = nMaxEncodedBytes;
-    
-    // Setup random float generator
-    srand( (unsigned)time( NULL ) );
-
-    // Create rx signal array to capable of holding 20 upsampled symbols with prefix
-    size_t rxSignalSize = (prefixedSymbolSize * 10);
-    size_t rxLastAllowedIndex = (prefixedSymbolSize * 9);
-
-    uint8_t * txBytes = (uint8_t*) calloc(nData, sizeof(uint8_t));
-    double * modulatorOutput = (double*) calloc(prefixedSymbolSize, sizeof(double));
-    double * rxSignal = (double*) calloc(rxSignalSize, sizeof(double));
+    OFDMSettings encoderSettings(encoderSettingsStruct);
+    OFDMSettings decoderSettings(decoderSettingsStruct);
 
     // Initialize Encoder objects
     QamModulator qam(encoderSettings);
     FFT ifft(encoderSettings);
-    NyquistModulator nyquistModulator(encoderSettings); // ifft.out
+    NyquistModulator nyquistModulator(encoderSettings);
     
     // Initialize Decoder objects
     FFT fft(decoderSettings);
-    NyquistModulator nyquistDemodulator(decoderSettings );    // fft.in
+    NyquistModulator nyquistDemodulator(decoderSettings );
     Detector detector(decoderSettings, fft, nyquistDemodulator);
-
-    // Generate Random Bytes
-    for(size_t i = 0; i < nData; i++)
-    {
-        txBytes[i] = rand() % 255;
-    }
-
-    // Generate random index value for symbol start
-    long int  symbolStart = rand() % rxLastAllowedIndex;
-    printf("Randomly Generated Symbol Start = %lu\n",symbolStart);
-
-    // Encode one symbol 
-    qam.Modulate(txBytes, (DoubleVec &) ifft.in, nData);
-    ifft.ComputeTransform( (fftw_complex *) &modulatorOutput[decoderSettings.PrefixSize]);
-    nyquistModulator.Modulate(modulatorOutput);
-    AddCyclicPrefix(modulatorOutput, symbolSize , decoderSettings.PrefixSize);
-    // Check Prefix Has been added correctly
-    for(size_t i = 0 ; i < decoderSettings.PrefixSize; i++)
-    {
-        //modulatorOutput[i] = modulatorOutput[symbolSize+i];
-
-        if(modulatorOutput[i] != modulatorOutput[symbolSize + i])
-        {
-            printf("Missmatch symbolwithprefix[%lu]  = %f, modulatorOutput[%lu] = %f \n" , i , modulatorOutput[i], (symbolSize + i) , modulatorOutput[(symbolSize + i)]);
-        }
-    }
-
-    // Copy the symbol with prefix to Rx signal array
-    memcpy(&rxSignal[symbolStart], &modulatorOutput[0], sizeof(double)*prefixedSymbolSize);
-
-    // Check if the symbol with prefix has been copied correctly
-    for(size_t i = 0 ; i < prefixedSymbolSize ; i++)
-    {
-        if(rxSignal[symbolStart+i] != modulatorOutput[i])
-        {
-            printf("Missmatch rxSignal[%lu]  = %f, symbolwithprefix[%lu] = %f \n" , symbolStart+i , rxSignal[symbolStart+i], i , modulatorOutput[i]);
-        }
-    }
-
-    long int foundSymbolStart =-1;
-    auto start = std::chrono::steady_clock::now();
-    size_t bufferCounter = 0;
-    while(foundSymbolStart == -1)
-    {
-        foundSymbolStart = detector.FindSymbolStart(&rxSignal[bufferCounter*prefixedSymbolSize],nData);
-        bufferCounter++;
-    }
-    auto end = std::chrono::steady_clock::now();
-    std::cout << "bufferCounter = " << bufferCounter<<  std::endl;
-
-    std::cout << "FindSymbolStart elapsed time: "
-    << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-    << " ns" << std::endl;   
-
-    long int ActualSymbolStart = symbolStart + 512;
-    // Check if the correlator max output is where the symbol was inserted
-    BOOST_CHECK_MESSAGE( foundSymbolStart == ActualSymbolStart, 
-    "Symbol start has not been detected correctly, found indicates index =  " << foundSymbolStart << " Whereas the actual start = " << ActualSymbolStart  );  
-
-}
-
-/*
-BOOST_AUTO_TEST_CASE(SymbolStartTest)
-{
-    printf("\nTesting Symbol Start Search...\n");
-
-    // OFDM Codec Settings
-    OFDMSettings encoderSettings;
-    encoderSettings.type = FFTW_BACKWARD;
-    encoderSettings.EnergyDispersalSeed = 10;
-    encoderSettings.nFFTPoints = 1024; 
-    encoderSettings.PilotToneDistance = 16; 
-    encoderSettings.PilotToneAmplitude = 2.0; 
-    encoderSettings.QAMSize = 2; 
-    encoderSettings.PrefixSize = (size_t) ((encoderSettings.nFFTPoints*2)/4); // 1/4th of symbol
-
-    OFDMSettings decoderSettings = encoderSettings;
-    decoderSettings.type = FFTW_FORWARD;
-
-    size_t symbolSize = decoderSettings.nFFTPoints * 2;
-    size_t prefixedSymbolSize = symbolSize + decoderSettings.PrefixSize ;
 
     // Setup random float generator
     srand( (unsigned)time( NULL ) );
 
     // Create rx signal array to capable of holding 20 upsampled symbols with prefix
-    size_t  rxSignalSize = (prefixedSymbolSize * 10);
-    size_t  rxLastAllowedIndex = (prefixedSymbolSize * 9);
-
-    // Generate random index value for symbol start
-    size_t  symbolStart = rand() % rxLastAllowedIndex;
-    symbolStart = 2347; // 2347 Edge case where detector fails
-    printf("Randomly Generated Symbol Start = %lu\n",symbolStart);
- 
-    size_t nAvaiableifftPoints = (decoderSettings.nFFTPoints - (size_t)(decoderSettings.nFFTPoints/decoderSettings.PilotToneDistance));
-    size_t nMaxEncodedBytes = (size_t)((nAvaiableifftPoints *  BITS_PER_FREQ_POINT)  / BITS_IN_BYTE);
-    size_t nData = nMaxEncodedBytes;
-
-    uint8_t * txBytes = (uint8_t*) calloc(nData, sizeof(uint8_t));
-    double * EncoderOutput = (double*) calloc(prefixedSymbolSize, sizeof(double));
-    double * rxSignal = (double*) calloc(rxSignalSize, sizeof(double));
-
-    // Initialize Encoder objects
-    QamModulator qam(encoderSettings);
-    FFT ifft(encoderSettings);
-    NyquistModulator nyquistModulator(encoderSettings); //  ifft.out
-
-    // Initialize Decoder objects
-    FFT fft(decoderSettings);
-    NyquistModulator nyquistDemodulator(decoderSettings);    // fft.in
-    Detector detector(decoderSettings, fft, nyquistDemodulator);
-
-    // Generate Random bytes to encode
-    for(size_t i = 0; i < nData; i++)
-    {
-        txBytes[i] = rand() % 255;
-    }
-
-    // Encode one symbol 
-    // Start with QAM Modulation
-    qam.Modulate(txBytes, (DoubleVec &) ifft.in, nData);    
-    // Compute transform & put it into buffer, make sure to make space for prefix
-    ifft.ComputeTransform( (fftw_complex *) &EncoderOutput[decoderSettings.PrefixSize]);
-    // Modulate the tx buffer
-    nyquistModulator.Modulate(&EncoderOutput[decoderSettings.PrefixSize]);
-    // Add prefix 
-    AddCyclicPrefix(EncoderOutput, symbolSize , decoderSettings.PrefixSize);
-
-    // Copy the symbol with prefix to Rx signal array
-    memcpy(&rxSignal[symbolStart], &EncoderOutput[0], sizeof(double)*prefixedSymbolSize);
-    // Check if the symbol with prefix has been copied correctly
-    for(size_t i = 0 ; i < prefixedSymbolSize ; i++)
-    {
-        if(rxSignal[symbolStart+i] != EncoderOutput[i])
-        {
-            printf("Missmatch rxSignal[%lu]  = %f, symbolwithprefix[%lu] = %f \n" , symbolStart+i , rxSignal[symbolStart+i], i , EncoderOutput[i]);
-        }
-    }
-
-    long int CoarseSearchIndex = -1;
-    size_t counter = 0;
-    size_t vectorCounter = 0;
-    auto start = std::chrono::steady_clock::now();
-    //  While Coarse Search index has not been found
-    while(CoarseSearchIndex == -1)
-    {
-        //CoarseSearchIndex = detector.CoarseSearch(&rxSignal[counter*prefixedSymbolSize]); //TODO:
-        // If whole buffer searched or Corase Search successfull
-        if(counter == 9)
-        {
-            // Break the while loop
-            break;
-        }
-        // Process next data block
-        counter++;
-    }
+    uint8_t *txBytes = (uint8_t*) calloc(decoderSettings.m_nDataBytesPerSymbol, sizeof(uint8_t));
+    double *modulatorOutput = (double*) calloc(decoderSettings.m_PrefixedSymbolSize, sizeof(double));
     
-    auto end = std::chrono::steady_clock::now();
-    std::cout << "counter = " << counter << std::endl;   
-    if(counter > 0 )
-    {
-        CoarseSearchIndex += ((counter-1) *prefixedSymbolSize);
-    }
-    
+    DoubleVec corOutput; // DEBUG ONLY
+    //auto start = std::chrono::steady_clock::now();
+    //auto end = std::chrono::steady_clock::now();
 
-    std::cout << "Coarse Search elapsed time: "
-    << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-    << " ns" << std::endl;   
-  
-    // Check if the correlator max output is where the symbol was inserted
-    BOOST_CHECK_MESSAGE( ((size_t)CoarseSearchIndex == symbolStart), 
-    "Symbol start has not been detected correctly, The peak occurs at index: " << CoarseSearchIndex );
+    size_t MaxCorrelationIndex = 0;
+    double MaxCorrelationValue = 0.0;
+    double correlation = 0.0;
 
-    printf("Coarse Search Index = %lu\n", CoarseSearchIndex);
-
-    // Skip the prefix 
-    size_t symbolStartIndex = CoarseSearchIndex + decoderSettings.PrefixSize;
-    printf("Symbol Start Index = %lu\n", symbolStartIndex);
-    // Randomly change the Coarse Start by up to +/- 9 indexes
-    size_t symbolStartOffsetIndex = symbolStartIndex + (rand() % 19 + (-9));
-    
-
-        double min = 100000000.0;
-        double sumOfImag = 0.0;
-        size_t searchRange = 25;
-
-        // Plot fine search output
-        std::vector<double> fineSearchOutput;
-
-        size_t startIndex = 0;
-        // Restric start index of fine search to 0th element
-        if( (symbolStartOffsetIndex - ((searchRange-1) / 2)) >= 0)
+    // For every possible location the symbol can be pasted in
+    for(size_t symbolStart = 0; symbolStart < nyquistModulator.m_RingBufferBoundary; symbolStart++) //
+    {   
+        //std::cout << "Correlator @ symbolStart = " << symbolStart << std::endl;
+        // Clear Rx Signal
+        //memset(detector.m_BlockRingBuffer, 0, nyquistModulator.m_RingBufferBoundary*sizeof(double) );
+        for(size_t i = 0; i < nyquistModulator.m_RingBufferBoundary; i++)
         {
-            startIndex = symbolStartOffsetIndex - (size_t)((searchRange-1) / 2);
+            detector.m_BlockRingBuffer[i] = 0;
         }
-        else
+        MaxCorrelationIndex = 0;
+        MaxCorrelationValue = 0.0;
+        correlation = 0.0;
+
+        // Generate Random Bytes
+        for(size_t i = 0; i < decoderSettings.m_nDataBytesPerSymbol; i++)
         {
-            startIndex = 0;
+            txBytes[i] = rand() % 255;
         }
-
-        size_t FineSearchSymbolIndex = 0;
-        start = std::chrono::steady_clock::now();
-        // TODO: Handle an exception where the stop index is outside the boundaries 
-        size_t stopIndex = symbolStartOffsetIndex + (size_t)((searchRange-1) / 2); 
-
-        vectorCounter = 0;
-        for(size_t i = startIndex; i < stopIndex; i++)
+   
+        // Encode one symbol 
+        qam.Modulate(txBytes, ifft.in);
+        ifft.ComputeTransform( (fftw_complex *) &modulatorOutput[decoderSettings.m_PrefixSize]);
+        nyquistModulator.Modulate(modulatorOutput);
+        AddCyclicPrefix(modulatorOutput, decoderSettings.m_SymbolSize, decoderSettings.m_PrefixSize);
+    
+        // Check Prefix Has been added correctly
+        for(size_t i = 0 ; i < decoderSettings.m_PrefixSize; i++)
         {
-            //sumOfImag = detector.ComputeSumOfImag(rxSignal, i, nData); TODO:
-            fineSearchOutput.push_back(sumOfImag);
-            vectorCounter++;
-            if( sumOfImag < min )
+            if(modulatorOutput[i] != modulatorOutput[decoderSettings.m_SymbolSize + i])
             {
-                min = sumOfImag;
-                FineSearchSymbolIndex = i;
+                printf("Missmatch symbolwithprefix[%lu]  = %f, modulatorOutput[%lu] = %f \n" , i , modulatorOutput[i], (decoderSettings.m_SymbolSize + i) , modulatorOutput[(decoderSettings.m_SymbolSize + i)]);
             }
         }
-        end = std::chrono::steady_clock::now();
 
-    //
-    //    start = std::chrono::steady_clock::now();
-    //    size_t FineSearchSymbolIndex = detector.FineSearch(rxSignal, symbolStartOffsetIndex,nData);
-    //    end = std::chrono::steady_clock::now();
-    //
+        // Copy the prefixed symbol somewhere in the ring buffer,
+        // Check if the index suggests wrapping around the buffer is needed
+        if(nyquistModulator.m_RingBufferBoundary - symbolStart > encoderSettings.m_PrefixedSymbolSize)
+        {
+            memcpy(&detector.m_BlockRingBuffer[symbolStart], &modulatorOutput[0], sizeof(double)*encoderSettings.m_PrefixedSymbolSize);
+        }
+        // wrap the object around
+        else
+        {
+            // Calculate the number elements of the symbol untill boundary of the ring buffer
+            size_t nToBoundary = nyquistModulator.m_RingBufferBoundary - symbolStart;
+            // Copy samples
+            memcpy(&detector.m_BlockRingBuffer[symbolStart], &modulatorOutput[0], nToBoundary*sizeof(double));
+            // Calculate the number elements of the symbol over boundary of the ring buffer
+            size_t nOverBoundary = encoderSettings.m_PrefixedSymbolSize - nToBoundary;
+            // Copy samples
+            memcpy(&detector.m_BlockRingBuffer[0], &modulatorOutput[nToBoundary], nOverBoundary*sizeof(double));
+        }
+        // Check if the symbol with prefix has been copied correctly
 
-    Gnuplot gp;
-    gp << "plot '-' with line title 'Fine Search'\n";
-    gp.send1d(fineSearchOutput);
+        // Clear correlator output
+        corOutput.clear();
+        // Calculate correlation for the whole ring buffer.
+        for(size_t i = 0; i < nyquistModulator.m_RingBufferBoundary; i++)
+        {
+            // Calculate correlation for a given offset
+            correlation = detector.ExecuteCorrelator();
+            // Square correlation to make the result +ve and further spearate peaks and noise
+            correlation *= correlation;
+            // Append correlation to plot buffer
+            corOutput.push_back(correlation); 
+            // Increment offset
+            detector.IncrementCorrelatorIndicies(1);
+        }
 
-    std::cout << "Fine Search elapsed time: "
-    << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-    << " ns" << std::endl;   
+        // Find Max in Correlation
+        for(size_t i = 0; i < nyquistModulator.m_RingBufferBoundary; i++)
+        {
+            if(MaxCorrelationValue <= corOutput[i])
+            {
+                MaxCorrelationIndex = i;
+                MaxCorrelationValue = corOutput[i];
+            }
+               
+        }
 
-    printf("Fine Search Index = %lu\n", FineSearchSymbolIndex);
+        // Plot Corellator output
+        //Gnuplot gp;
+        //gp << "plot '-' with line title 'Detector - Correlation'\n";
+        //gp.send1d(corOutput);
 
-    // Check if the fine search corresponds to symbol start
-    BOOST_CHECK_MESSAGE( (FineSearchSymbolIndex == symbolStart+decoderSettings.PrefixSize), 
-    "Symbol start has not been detected correctly, The lowest img sum occurs at start index: " << FineSearchSymbolIndex );  
+        // Check if the correlator max output is where the symbol was inserted
+        BOOST_CHECK_MESSAGE( symbolStart == MaxCorrelationIndex, 
+        "Max correlation does not correspond to prefixed symbol start, actual =  " << symbolStart << " Max = " << MaxCorrelationIndex  );  
+    }
+}
+
+
+
+/**
+* Generates random prefixed symbol and 
+* stores it for every possible position
+* in the ring buffer. Then a coarse search
+* fucntion is used to find the coarse symbol
+* start
+*
+* This test rquires a appropriate threshold to
+* be set, play around with 
+* 
+*    m_UpperThreshold(35000000000)
+*    m_LowerThreshold(10000000000)
+*
+* In the decoder settings if this fails
+*
+*/   
+BOOST_AUTO_TEST_CASE(CoarseStartTest)
+{
+   // OFDM Codec Settings
+    OFDMSettingsStruct encoderSettingsStruct;
+    encoderSettingsStruct.type = FFTW_BACKWARD;
+    encoderSettingsStruct.EnergyDispersalSeed = 10;
+    encoderSettingsStruct.nFFTPoints = 1024; 
+    encoderSettingsStruct.PilotToneDistance = 16; 
+    encoderSettingsStruct.PilotToneAmplitude = 2.0; 
+    encoderSettingsStruct.QAMSize = 2; 
+    encoderSettingsStruct.PrefixSize = (size_t) ((encoderSettingsStruct.nFFTPoints*2)/4); // 1/4th of symbol
+    encoderSettingsStruct.nDataBytesPerSymbol = 100;
+
+    OFDMSettingsStruct decoderSettingsStruct = encoderSettingsStruct;
+    decoderSettingsStruct.type = FFTW_FORWARD;
+
+    OFDMSettings encoderSettings(encoderSettingsStruct);
+    OFDMSettings decoderSettings(decoderSettingsStruct);
+
+    // Initialize Encoder objects
+    QamModulator qam(encoderSettings);
+    FFT ifft(encoderSettings);
+    NyquistModulator nyquistModulator(encoderSettings);
+    
+    // Initialize Decoder objects
+    FFT fft(decoderSettings);
+    NyquistModulator nyquistDemodulator(decoderSettings );
+    Detector detector(decoderSettings, fft, nyquistDemodulator);
+
+    // Setup random float generator
+    srand( (unsigned)time( NULL ) );
+
+    // Create rx signal array to capable of holding 20 upsampled symbols with prefix
+    uint8_t *txBytes = (uint8_t*) calloc(decoderSettings.m_nDataBytesPerSymbol, sizeof(uint8_t));
+    double *modulatorOutput = (double*) calloc(decoderSettings.m_PrefixedSymbolSize, sizeof(double));
+
+    auto start = std::chrono::steady_clock::now();
+    auto end = std::chrono::steady_clock::now();
+    
+    long int symbolStart = 0;
+    // For every possible location the symbol can be pasted in
+    for(size_t PrefixedsymbolStart = 0; PrefixedsymbolStart < nyquistModulator.m_RingBufferBoundary; PrefixedsymbolStart++) //
+    {   
+        // Compute the actual symbol start not the prefixed start
+        // Start with prefixed symbol start
+        symbolStart = PrefixedsymbolStart;
+        // Increment the start by the size of the prefix
+        detector.IncrementByN(symbolStart, decoderSettings.m_PrefixSize);
+        //std::cout << "Coarse Start @ Prefixed Symbol Start  = " << PrefixedsymbolStart << std::endl;
+        //std::cout << "Coarse Start @ Symbol Start  = " << symbolStart << std::endl;
+        // Clear Rx Signal
+        //memset(detector.m_BlockRingBuffer, 0, nyquistModulator.m_RingBufferBoundary*sizeof(double) );
+        for(size_t i = 0; i < nyquistModulator.m_RingBufferBoundary; i++)
+        {
+            detector.m_BlockRingBuffer[i] = 0;
+        }
+
+        // Generate Random Bytes
+        for(size_t i = 0; i < decoderSettings.m_nDataBytesPerSymbol; i++)
+        {
+            txBytes[i] = rand() % 255;
+        }
+   
+        // Encode one symbol 
+        qam.Modulate(txBytes, ifft.in);
+        ifft.ComputeTransform( (fftw_complex *) &modulatorOutput[decoderSettings.m_PrefixSize]);
+        nyquistModulator.Modulate(modulatorOutput);
+        AddCyclicPrefix(modulatorOutput, decoderSettings.m_SymbolSize, decoderSettings.m_PrefixSize);
+
+        // Copy the prefixed symbol somewhere in the ring buffer,
+        // Check if the index suggests wrapping around the buffer is needed
+        if( (nyquistModulator.m_RingBufferBoundary - PrefixedsymbolStart) > encoderSettings.m_PrefixedSymbolSize)
+        {
+            memcpy(&detector.m_BlockRingBuffer[PrefixedsymbolStart], &modulatorOutput[0], sizeof(double)*encoderSettings.m_PrefixedSymbolSize);
+        }
+        // wrap the object around
+        else
+        {
+            // Calculate the number elements of the symbol untill boundary of the ring buffer
+            size_t nToBoundary = nyquistModulator.m_RingBufferBoundary - PrefixedsymbolStart;
+            // Copy samples
+            memcpy(&detector.m_BlockRingBuffer[PrefixedsymbolStart], &modulatorOutput[0], nToBoundary*sizeof(double));
+            // Calculate the number elements of the symbol over boundary of the ring buffer
+            size_t nOverBoundary = encoderSettings.m_PrefixedSymbolSize - nToBoundary;
+            // Copy samples
+            memcpy(&detector.m_BlockRingBuffer[0], &modulatorOutput[nToBoundary], nOverBoundary*sizeof(double));
+        }
+
+        long int coarseStart = -1;
+        while( coarseStart == -1)
+        {
+          start = std::chrono::steady_clock::now();
+          coarseStart = detector.CoarseSearch();
+          end = std::chrono::steady_clock::now();
+        }
+
         
+        //std::cout << "Coarse Search elapsed time: "
+        //<< std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+        //<< " ns" << std::endl;  
+        
+
+        // Check if the correlator max output is where the symbol was inserted
+        BOOST_CHECK_MESSAGE(  (long int)PrefixedsymbolStart == coarseStart, 
+        "Coarse Search Not Successfull Prefixed symbolStart start, actual =  " << PrefixedsymbolStart << " found = " << coarseStart );   
+    }
+}
+
+
+/**
+* Generates random prefixed symbol and 
+* stores it for every possible position
+* in the ring buffer. Then a coarse search
+* fucntion is used to find the coarse symbol
+* start to which offset is added randomly and
+* fine search is used to correct the offset
+*
+* This test rquires a appropriate threshold to
+* be set, play around with 
+* 
+*    m_UpperThreshold(35000000000)
+*    m_LowerThreshold(10000000000)
+*
+* In the decoder settings if this fails
+*
+*/   
+BOOST_AUTO_TEST_CASE(FineSearch)
+{
+   // OFDM Codec Settings
+    OFDMSettingsStruct encoderSettingsStruct;
+    encoderSettingsStruct.type = FFTW_BACKWARD;
+    encoderSettingsStruct.EnergyDispersalSeed = 10;
+    encoderSettingsStruct.nFFTPoints = 1024; 
+    encoderSettingsStruct.PilotToneDistance = 16; 
+    encoderSettingsStruct.PilotToneAmplitude = 2.0; 
+    encoderSettingsStruct.QAMSize = 2; 
+    encoderSettingsStruct.PrefixSize = (size_t) ((encoderSettingsStruct.nFFTPoints*2)/4); // 1/4th of symbol
+    encoderSettingsStruct.nDataBytesPerSymbol = 100;
+
+    OFDMSettingsStruct decoderSettingsStruct = encoderSettingsStruct;
+    decoderSettingsStruct.type = FFTW_FORWARD;
+
+    OFDMSettings encoderSettings(encoderSettingsStruct);
+    OFDMSettings decoderSettings(decoderSettingsStruct);
+
+    // Initialize Encoder objects
+    QamModulator qam(encoderSettings);
+    FFT ifft(encoderSettings);
+    NyquistModulator nyquistModulator(encoderSettings);
+    
+    // Initialize Decoder objects
+    FFT fft(decoderSettings);
+    NyquistModulator nyquistDemodulator(decoderSettings );
+    Detector detector(decoderSettings, fft, nyquistDemodulator);
+
+    // Setup random float generator
+    srand( (unsigned)time( NULL ) );
+
+    // Create rx signal array to capable of holding 20 upsampled symbols with prefix
+    uint8_t *txBytes = (uint8_t*) calloc(decoderSettings.m_nDataBytesPerSymbol, sizeof(uint8_t));
+    double *modulatorOutput = (double*) calloc(decoderSettings.m_PrefixedSymbolSize, sizeof(double));
+
+    auto start = std::chrono::steady_clock::now();
+    auto end = std::chrono::steady_clock::now();
+    
+    long int symbolStart = 0;
+    // For every possible location the symbol can be pasted in
+    for(size_t PrefixedsymbolStart = 0; PrefixedsymbolStart < nyquistModulator.m_RingBufferBoundary; PrefixedsymbolStart++)
+    {   
+        // Compute the actual symbol start not the prefixed start
+        // Start with prefixed symbol start
+        symbolStart = PrefixedsymbolStart;
+        // Increment the start by the size of the prefix
+        detector.IncrementByN(symbolStart, decoderSettings.m_PrefixSize);
+        //std::cout << "Coarse Start @ Prefixed Symbol Start  = " << PrefixedsymbolStart << std::endl;
+        //std::cout << "Coarse Start @ Symbol Start  = " << symbolStart << std::endl;
+        // Clear Rx Signal
+        //memset(detector.m_BlockRingBuffer, 0, nyquistModulator.m_RingBufferBoundary*sizeof(double) );
+        for(size_t i = 0; i < nyquistModulator.m_RingBufferBoundary; i++)
+        {
+            detector.m_BlockRingBuffer[i] = 0;
+        }
+
+        // Generate Random Bytes
+        for(size_t i = 0; i < decoderSettings.m_nDataBytesPerSymbol; i++)
+        {
+            txBytes[i] = rand() % 255;
+        }
+   
+        // Encode one symbol 
+        qam.Modulate(txBytes, ifft.in);
+        ifft.ComputeTransform( (fftw_complex *) &modulatorOutput[decoderSettings.m_PrefixSize]);
+        nyquistModulator.Modulate(modulatorOutput);
+        AddCyclicPrefix(modulatorOutput, decoderSettings.m_SymbolSize, decoderSettings.m_PrefixSize);
+
+        // Copy the prefixed symbol somewhere in the ring buffer,
+        // Check if the index suggests wrapping around the buffer is needed
+        if( (nyquistModulator.m_RingBufferBoundary - PrefixedsymbolStart) > encoderSettings.m_PrefixedSymbolSize)
+        {
+            memcpy(&detector.m_BlockRingBuffer[PrefixedsymbolStart], &modulatorOutput[0], sizeof(double)*encoderSettings.m_PrefixedSymbolSize);
+        }
+        // wrap the object around
+        else
+        {
+            // Calculate the number elements of the symbol untill boundary of the ring buffer
+            size_t nToBoundary = nyquistModulator.m_RingBufferBoundary - PrefixedsymbolStart;
+            // Copy samples
+            memcpy(&detector.m_BlockRingBuffer[PrefixedsymbolStart], &modulatorOutput[0], nToBoundary*sizeof(double));
+            // Calculate the number elements of the symbol over boundary of the ring buffer
+            size_t nOverBoundary = encoderSettings.m_PrefixedSymbolSize - nToBoundary;
+            // Copy samples
+            memcpy(&detector.m_BlockRingBuffer[0], &modulatorOutput[nToBoundary], nOverBoundary*sizeof(double));
+        }
+
+        long int coarseStart = -1;
+        while( coarseStart == -1)
+        {
+          start = std::chrono::steady_clock::now();
+          coarseStart = detector.CoarseSearch();
+          end = std::chrono::steady_clock::now();
+        }
+
+        // Check if the correlator max output is where the symbol was inserted
+        BOOST_CHECK_MESSAGE(  (long int)PrefixedsymbolStart == coarseStart, 
+        "Coarse Search Not Successfull Prefixed symbolStart start, actual =  " << PrefixedsymbolStart << " found = " << coarseStart );   
+        
+        // Add some offset to the coarse start 
+
+        // Increment coarse start by prefix
+        detector.IncrementByN(coarseStart, encoderSettings.m_PrefixSize);
+        
+
+        size_t fineSearch = 0; 
+        fineSearch = detector.FineSearch(coarseStart);
+    
+        // Check if the correlator max output is where the symbol was inserted
+        BOOST_CHECK_MESSAGE(  (size_t)symbolStart == fineSearch, 
+        "Fine Search Not Successfull Symbol Start actual =  " << symbolStart << " found = " << fineSearch );   
+    }
+}
+
+
+/*
+TODO:
+BOOST_AUTO_TEST_CASE(SymbolStartTest)
+{
+    // OFDM Codec Settings
+    OFDMSettingsStruct encoderSettingsStruct;
+    encoderSettingsStruct.type = FFTW_BACKWARD;
+    encoderSettingsStruct.EnergyDispersalSeed = 10;
+    encoderSettingsStruct.nFFTPoints = 1024; 
+    encoderSettingsStruct.PilotToneDistance = 16; 
+    encoderSettingsStruct.PilotToneAmplitude = 2.0; 
+    encoderSettingsStruct.QAMSize = 2; 
+    encoderSettingsStruct.PrefixSize = (size_t) ((encoderSettingsStruct.nFFTPoints*2)/4); // 1/4th of symbol
+    encoderSettingsStruct.nDataBytesPerSymbol = 100;
+
+    OFDMSettingsStruct decoderSettingsStruct = encoderSettingsStruct;
+    decoderSettingsStruct.type = FFTW_FORWARD;
+
+    OFDMSettings encoderSettings(encoderSettingsStruct);
+    OFDMSettings decoderSettings(decoderSettingsStruct);
+
+    // Initialize Encoder objects
+    QamModulator qam(encoderSettings);
+    FFT ifft(encoderSettings);
+    NyquistModulator nyquistModulator(encoderSettings);
+    
+    // Initialize Decoder objects
+    FFT fft(decoderSettings);
+    NyquistModulator nyquistDemodulator(decoderSettings );
+    Detector detector(decoderSettings, fft, nyquistDemodulator);
+
+    // Setup random float generator
+    srand( (unsigned)time( NULL ) );
+
+    // Create rx signal array to capable of holding 20 upsampled symbols with prefix
+    uint8_t *txBytes = (uint8_t*) calloc(decoderSettings.m_nDataBytesPerSymbol, sizeof(uint8_t));
+    double *modulatorOutput = (double*) calloc(decoderSettings.m_PrefixedSymbolSize, sizeof(double));
+    
+    size_t nBlocksRxSignal = 10;
+    size_t nMaxAllowedBlock = nBlocksRxSignal -1;
+    size_t  rxSignalSize = (decoderSettings.m_PrefixedSymbolSize * nBlocksRxSignal);
+    double * rxSignal = (double*) calloc(rxSignalSize, sizeof(double));
+    size_t  rxLastAllowedIndex = (decoderSettings.m_PrefixedSymbolSize * nMaxAllowedBlock);
+
+    auto start = std::chrono::steady_clock::now();
+    auto end = std::chrono::steady_clock::now();
+    
+    long int symbolStart = 0;
+    // For every possible location the symbol can be pasted in
+    for(size_t PrefixedsymbolStart = decoderSettings.m_PrefixedSymbolSize; PrefixedsymbolStart < rxLastAllowedIndex; PrefixedsymbolStart++)
+    {   
+        
+        // Compute the actual symbol start not the prefixed start
+        // Start with prefixed symbol start
+        symbolStart = PrefixedsymbolStart;
+        // Increment the start by the size of the prefix
+        detector.IncrementByN(symbolStart, decoderSettings.m_PrefixSize);
+        std::cout << "Symbol Start Test @ Prefixed Symbol Start  = " << PrefixedsymbolStart << std::endl;
+        std::cout << "Symbol Start Test @ Symbol Start  = " << symbolStart << std::endl;
+        // Clear Rx Signal
+        //memset(rxSignal, 0, rxSignalSize*sizeof(double) );
+        for(size_t i = 0; i < rxSignalSize; i++)
+        {
+            rxSignal[i] = 0;
+        }
+
+        // Generate Random Bytes
+        for(size_t i = 0; i < decoderSettings.m_nDataBytesPerSymbol; i++)
+        {
+            txBytes[i] = rand() % 255;
+        }
+   
+        // Encode one symbol 
+        qam.Modulate(txBytes, ifft.in);
+        ifft.ComputeTransform( (fftw_complex *) &modulatorOutput[decoderSettings.m_PrefixSize]);
+        nyquistModulator.Modulate(modulatorOutput);
+        AddCyclicPrefix(modulatorOutput, decoderSettings.m_SymbolSize, decoderSettings.m_PrefixSize);
+
+        long int detectedSymbolStart = -1;
+        size_t BufferCounter = 0;
+        while( detectedSymbolStart == -1)
+        {
+            start = std::chrono::steady_clock::now();
+            detectedSymbolStart = detector.FindSymbolStart(&rxSignal[decoderSettings.m_PrefixedSymbolSize*BufferCounter]);
+            if( (BufferCounter+1) <= nMaxAllowedBlock )
+            {
+                BufferCounter++;
+            }  
+            else
+            {
+                BufferCounter = 0;
+            }
+            end = std::chrono::steady_clock::now();
+        }
+    
+        // Check if the correlator max output is where the symbol was inserted
+        BOOST_CHECK_MESSAGE( symbolStart == detectedSymbolStart, 
+        "Coarse Search Not Successfull Prefixed symbolStart start, actual =  " << symbolStart << " found = " << detectedSymbolStart );   
+    }
 }
 */
 

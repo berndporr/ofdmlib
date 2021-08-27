@@ -28,11 +28,11 @@
  * Creates cycli prefix by copying the symbols end to memory
  * preceding the start of the symbol.
  * 
- * @param symbol pointer to the start of the symbol, including prefix
+ * @param symbol pointer to the start of the symbol's prefix
  * 
- * @param symbolSize size of the symbol excluding prefix
+ * @param symbolSize size of the symbol(excluding prefix)
  * 
- * @param prefixSize number of samples included in the prefix
+ * @param prefixSize number of samples in the prefix
  * 
  */
 inline void AddCyclicPrefix(double *symbol, size_t symbolSize, size_t prefixSize)
@@ -60,7 +60,7 @@ public:
 	* @param nyquist reference to the nyquist modulator objecct
 	*
 	*/
-	Detector(OFDMSettings &settings, FFT &fft, NyquistModulator &nyquist);
+	Detector(const OFDMSettings &settings, FFT &fft, NyquistModulator &nyquist);
 
 	/**
 	* Destructor 
@@ -73,18 +73,18 @@ public:
 	double ExecuteCorrelator();
 	long int CoarseSearch();
 	
-	double ComputeSumOfImag(size_t offset, size_t nbytes);
-	size_t FineSearch(size_t coarseStart, size_t nbytes);
+	double ComputeSumOfImag(size_t offset);
+	size_t FineSearch(size_t coarseStart);
 
-	long int FindSymbolStart(const double *input, size_t nbytes);
+	long int FindSymbolStart(const double *input);
 
 	void IncrementCorrelatorIndicies(size_t n);
 	void Increment(size_t &counter);
-	void IncrementByN(long int  &variable, size_t n);
+	void IncrementByN(long int &variable, size_t n);
 
 private:
 
-	OFDMSettings &m_ofdmSettings;
+	const OFDMSettings &m_ofdmSettings;
 	FFT &rFFT;
 	NyquistModulator &rNyquistModulator;
 
@@ -94,9 +94,6 @@ private:
 	size_t m_SearchRange; // Search range of the fine search, this range is used to determine the indicies of search loop  
 	size_t m_LastPeakCounter; // The number of samples since the last peak was detected 
 	size_t m_nFromPeak;
-
-	size_t m_SymbolSize;
-	size_t m_PrefixedSymbolSize;
 
     size_t m_PrefixIndex;
     size_t m_SignalIndex;
@@ -117,7 +114,7 @@ private:
 	size_t m_CorrelatorMaxValueIndex;
 
 	// Debug Info
-	std::vector<double> corOutput; // DEBUG ONLY
+	DoubleVec corOutput; // DEBUG ONLY
 	size_t plotCounter = 0;
 	
 	public:

@@ -22,7 +22,7 @@
 * Constructor
 *
 */
-OFDMCodec::OFDMCodec(OFDMSettings settingsStruct) :
+OFDMCodec::OFDMCodec(OFDMSettingsStruct settingsStruct) :
     m_Settings(settingsStruct),
     m_fft(m_Settings),
     m_NyquistModulator(m_Settings),
@@ -30,7 +30,7 @@ OFDMCodec::OFDMCodec(OFDMSettings settingsStruct) :
     m_qam(m_Settings),
     m_Estimator(m_Settings)
 {
-    m_PrefixedSymbolSize = ((m_Settings.nFFTPoints * 2) + m_Settings.PrefixSize);
+
 }
 
 
@@ -54,30 +54,37 @@ OFDMCodec::~OFDMCodec()
 * @return vector containing encoded symbol 
 *
 */
-void OFDMCodec::Encode(const uint8_t *input, double *output, size_t nBytes)
+void OFDMCodec::Encode(const uint8_t *input, double *output)
 {
     // QAM Encode data block
-    m_qam.Modulate(input, (DoubleVec &) m_fft.in, nBytes);
+    m_qam.Modulate(input, m_fft.in);
     // Transform data and put into the 
-    m_fft.ComputeTransform( (fftw_complex *) &output[GetSettings().PrefixSize]);
+    m_fft.ComputeTransform( (fftw_complex *) &output[GetSettings().m_PrefixSize]);
     // Run nyquist modulator
-    m_NyquistModulator.Modulate(&output[GetSettings().PrefixSize]);
+    m_NyquistModulator.Modulate(&output[GetSettings().m_PrefixSize]);
     // Add cyclic prefix
-    AddCyclicPrefix(output, GetSettings().nFFTPoints*2 , GetSettings().PrefixSize);
+    AddCyclicPrefix(output, GetSettings().m_SymbolSize , GetSettings().m_PrefixSize);
 }
 
-void OFDMCodec::ProcessTxBuffer(const uint8_t *input, double *txBuffer, size_t nBytes)
+/**
+* Encodes one OFDM Symbol
+* 
+* @param inputData reference to input data byte vector
+*
+* @return vector containing encoded symbol 
+*
+*/
+void OFDMCodec::ProcessTxBuffer(const uint8_t *input, double *txBuffer)
 {
     // QAM Encode data block
-    m_qam.Modulate(input, (DoubleVec &) m_fft.in, nBytes);
+    m_qam.Modulate(input, m_fft.in);
     // Transform data and put into the 
-    m_fft.ComputeTransform( (fftw_complex *) &txBuffer[GetSettings().PrefixSize]);
+    m_fft.ComputeTransform( (fftw_complex *) &txBuffer[GetSettings().m_PrefixSize]);
     // Run nyquist modulator
-    m_NyquistModulator.Modulate(&txBuffer[GetSettings().PrefixSize]);
+    m_NyquistModulator.Modulate(&txBuffer[GetSettings().m_PrefixSize]);
     // Add cyclic prefix
-    AddCyclicPrefix(txBuffer, GetSettings().nFFTPoints*2 , GetSettings().PrefixSize);
+    AddCyclicPrefix(txBuffer, GetSettings().m_SymbolSize, GetSettings().m_PrefixSize);
 }
-
 
 
 // Decoding Related Functions //
@@ -93,13 +100,13 @@ void OFDMCodec::ProcessTxBuffer(const uint8_t *input, double *txBuffer, size_t n
 * @return byte vector containing decoded bytes
 *
 */
-void OFDMCodec::Decode(const double *input, uint8_t *output, size_t nBytes)
+void OFDMCodec::Decode(const double *input, uint8_t *output)
 {
     // Time sync to first symbol start
     size_t symbolStart = -1;
     if( symbolStart >= 0)
     {
-        symbolStart = m_detector.FindSymbolStart(input, nBytes);
+        symbolStart = m_detector.FindSymbolStart(input);
         // Run Data thrgough nyquist demodulator
         //m_NyquistModulator.Demodulate(input, m_fft.in, symbolStart);
         // Compute FFT & Normalise
@@ -107,7 +114,7 @@ void OFDMCodec::Decode(const double *input, uint8_t *output, size_t nBytes)
         // Normalise FFT
         m_fft.Normalise();
         // Decode QAM encoded fft points and place in the destination buffer
-        m_qam.Demodulate( (DoubleVec &) m_fft.out, output, nBytes);
+        m_qam.Demodulate(m_fft.out, output);
     }
 }
 
@@ -117,29 +124,31 @@ void OFDMCodec::Decode(const double *input, uint8_t *output, size_t nBytes)
 *
 * @param input pointer to the rx buffer
 *
+* @param output pointer to the buffer decoded bytes are stored to
+*
 * @param nBytes number of bytes encoded in the symbol
 *
-* @return Number of bytes decoded by the  //TODO: return if symbol has been decoded sucessfully
+* @return Number of bytes decoded by the  //TODO: return bool if symbol has been decoded sucessfully
 *
 */
 size_t OFDMCodec::ProcessRxBuffer(const double *input, uint8_t *output , size_t nBytes)
 {    
     long int symbolStart = -1;
     // Find Symbol Start
-    symbolStart = m_detector.FindSymbolStart(input, nBytes);
+    symbolStart = m_detector.FindSymbolStart(input);
     // If symbol start detected
     if (symbolStart >= 0)
     {
         // Run Data thrgough nyquist demodulator
-        m_NyquistModulator.Demodulate(m_detector.m_BlockRingBuffer, m_fft.in, symbolStart);  // rxBuffer points to the block ring buffer
+        m_NyquistModulator.Demodulate(m_detector.m_BlockRingBuffer, m_fft.in, symbolStart);
         // Compute FFT & Normalise
         m_fft.ComputeTransform();
         // Normalise FFT
         m_fft.Normalise();
         // Estmiate Channel
-        //m_Estimator.PhaseCompenstator(m_fft.out, nBytes);
+        //m_Estimator.PhaseCompenstator(m_fft.out);
         // Decode QAM encoded fft points and place in the destination buffer
-        m_qam.Demodulate( (DoubleVec &) m_fft.out, output, nBytes);
+        m_qam.Demodulate(m_fft.out, output);
         return nBytes;
     }
     else

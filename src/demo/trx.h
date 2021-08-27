@@ -5,6 +5,7 @@
 * 
 */
 #ifndef TRX_H
+#define TRX_H
 
 #include <string>
 #include <unistd.h>
@@ -135,7 +136,7 @@ public:
   * @param settingsStruct 
 	*
 	*/
-	AudioTrx(rtAudioSettings audioSettings, OFDMSettings encoderSettings, OFDMSettings decoderSettings, TRX_OPERATION_MODE operationMode);
+	AudioTrx(rtAudioSettings audioSettings, OFDMSettingsStruct encoderSettings, OFDMSettingsStruct decoderSettings, TRX_OPERATION_MODE operationMode);
 
 
 	/**
@@ -150,7 +151,7 @@ public:
     void StartRxStream();
     void StopRxStream();
 
-    void OpenStreams(size_t mode);
+    void OpenStreams(TRX_OPERATION_MODE mode);
 
     RxCallbackData m_RxCallbackData;   
     TxCallbackData m_TxCallbackData;

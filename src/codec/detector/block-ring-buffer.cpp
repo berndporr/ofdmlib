@@ -23,5 +23,5 @@ BlockRingBuffer::BlockRingBuffer(size_t blockSize, size_t nBlocks) :
 */
 BlockRingBuffer::~BlockRingBuffer()
 {
-
+    free(m_BlockRingBuffer);
 }

@@ -13,17 +13,11 @@
 *
 *
 */
-FFT::FFT(OFDMSettings &settings) :
-    m_ofdmSettings(settings)
+FFT::FFT(const OFDMSettings &settings) :
+    m_ofdmSettings(settings),
+    m_configured(0)
 {
     Configure();
-
-    // Compute number of pilot tones based on the bytes in the symbol
-    //m_nPilots = (size_t) (((100*BITS_IN_BYTE)/BITS_PER_FREQ_POINT)/m_ofdmSettings.PilotToneDistance); // 100 = nbytes
-    // Compute frequency coefficient index used
-    // Assume spectrum is centred symmetrically around DC and depends on nBytes
-    //size_t fftPointIndex = (size_t) ((m_ofdmSettings.nFFTPoints) - (m_nPilots/ 2) - ((100 * FREQ_POINTS_PER_BYTE) / 2));
-    //m_PilotStartIndex = fftPointIndex;
 }
 
 
@@ -47,7 +41,7 @@ FFT::~FFT()
 * @return 0 on success, else error number
 *
 */
-int FFT::Configure()
+void FFT::Configure()
 {   
     // If object has been configured before
     if(m_configured)
@@ -56,57 +50,44 @@ int FFT::Configure()
         Close();
     }
     // Allocate memory for the input & output buffers
-    in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.nFFTPoints);
-    out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.nFFTPoints);
+    in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.m_nFFTPoints);
+    out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.m_nFFTPoints);
 
-    FFTin = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.nFFTPoints);
-    FFTout = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.nFFTPoints);
-    
-    IFFTin = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.nFFTPoints);
-    IFFTout = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.nFFTPoints);
-
-    // Use the fastes avaiable plan for the size and type of the transform specified by measuring  
-    m_fftplan = fftw_plan_dft_1d(m_ofdmSettings.nFFTPoints, in, out, m_ofdmSettings.type, FFTW_MEASURE); 
-    m_ifftplan = fftw_plan_dft_1d(m_ofdmSettings.nFFTPoints, IFFTin, IFFTout, FFTW_BACKWARD, FFTW_MEASURE); 
+    // Create a plan by measuring the fastest avaiable plan
+    m_fftplan = fftw_plan_dft_1d(m_ofdmSettings.m_nFFTPoints, in, out, m_ofdmSettings.m_type, FFTW_MEASURE); 
 
     // Set configure flag
     m_configured = 1;
-    //m_ofdmSettings = settings;
-    return 0;
 }
 
 
 /**
 * Destroys fftw plan and frees up allocated memory for input and output buffers
-* 
-* @return 0 on success, else error number
 *
 */    
-int FFT::Close()
+void FFT::Close()
 {
     fftw_destroy_plan(m_fftplan);
-    fftw_destroy_plan(m_ifftplan);
     fftw_free(in); fftw_free(out);
+    //fftw_cleanup();
     m_configured = 0;
-    return 0;
 }
 
 
 /**
 * Normalises the output of the FFT 
-* 
-* @return 0 on success, else error number
 *
 */  
-int FFT::Normalise()
+void FFT::Normalise()
 {
-    double multiplicationFactor = 1./m_ofdmSettings.nFFTPoints;
-    for (size_t i = 0; i < m_ofdmSettings.nFFTPoints; i++)
+    // Calculate the multiplication factor
+    double multiplicationFactor = 1./m_ofdmSettings.m_nFFTPoints;
+    // For each complex frequency point
+    for (size_t i = 0; i < m_ofdmSettings.m_nFFTPoints; i++)
     {
         out[i][0] *= multiplicationFactor;
         out[i][1] *= multiplicationFactor;
     }
-    return 0;
 }
 
 
@@ -114,50 +95,17 @@ int FFT::Normalise()
 * Computes the sum of the imaginary points where 
 * pilot tones are expected
 * 
-* @return symbol start(integer) index, else -1
+* @return sum of the phase(imaginary) compomenets of the pilot tones
 *
 */
-double FFT::GetImagSum(const size_t nBytes) 
+double FFT::GetImagSum() 
 {
-    // Compute number of pilot tones based on the bytes in the symbol
-    size_t nPilots = (size_t) (((nBytes*BITS_IN_BYTE)/BITS_PER_FREQ_POINT)/m_ofdmSettings.PilotToneDistance);
-    // Compute frequency coefficient index used
-    // Assume spectrum is centred symmetrically around DC and depends on nBytes
     double sumOfImag = 0.0;
-    size_t pilotToneCounter = (size_t) m_ofdmSettings.PilotToneDistance / 2 ; // divide this by to when starting with -ve frequencies
-    size_t fftPointIndex = (size_t) ((m_ofdmSettings.nFFTPoints) - (nPilots/ 2) - ((nBytes * FREQ_POINTS_PER_BYTE) / 2));
-    size_t insertionCounter = 0;
-    // For expected byte 
-    for(size_t byteCounter = 0; byteCounter < nBytes; byteCounter++)
+    // For each pilot tone location
+    for(size_t i = 0; i < m_ofdmSettings.m_PilotToneLocations.size(); i++)
     {
-        insertionCounter = 0;
-        // Process 4 FFT points i.e 8 bits
-        while(insertionCounter < 4)
-        {
-            // If pilot tone counter counted down
-            // This point is the pilot tone
-            if(pilotToneCounter == 0)
-            {
-                // Reset Counter
-                pilotToneCounter = m_ofdmSettings.PilotToneDistance;
-                sumOfImag += abs(out[fftPointIndex][1]);
-    
-            }
-            // This point is QAM encoded complex point
-            else
-            {
-                insertionCounter++;
-                pilotToneCounter--;
-            }
-            // Increment fft point counter
-            fftPointIndex++;
-            // Check if fft exceeds the limit of points
-            if(fftPointIndex == m_ofdmSettings.nFFTPoints)
-            {
-                // Roll back to positive frequencies
-                fftPointIndex = 0;
-            }
-        }
+        // Add phase value of a pilot tone
+        sumOfImag += abs( out[ m_ofdmSettings.m_PilotToneLocations[i] ][1] );
     }
     // Return sum
     return sumOfImag;
@@ -166,15 +114,11 @@ double FFT::GetImagSum(const size_t nBytes)
 
 /**
 * Computes FFT Based on the object's input (in) buffer and stores it in the object's output (out) buffer.
-* 
-*
-* @return 0 on success, else error number
 *
 */    
-int FFT::ComputeTransform()
+void FFT::ComputeTransform()
 {
     fftw_execute(m_fftplan);
-    return 0;
 }
 
 
@@ -188,8 +132,7 @@ int FFT::ComputeTransform()
 * @return 0 on success, else error number
 *
 */   
-int FFT::ComputeTransform(fftw_complex *dest)
+void FFT::ComputeTransform(fftw_complex *dest)
 {
     fftw_execute_dft(m_fftplan, in, dest);
-    return 0;
 }
