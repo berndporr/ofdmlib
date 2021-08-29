@@ -9,6 +9,31 @@
 #include "nyquist-modulator.h"
 #include <cstddef>
 
+// Ring Buffer Increments
+
+/**
+* Increments the specified variable by and wraps around
+* if neccessary.
+* 
+* @param variable reference to the variable being incremented
+*
+* @param Limit reference to the variable being incremented
+*
+*/
+void LimitIncrement(size_t &variable, size_t Limit)
+{
+    // Less than boundary
+    if( (variable + 1) < Limit )
+    {
+        variable++;
+    }
+    // Wrap around
+    else
+    {
+        variable = 0;
+    }
+}
+
 
 /**
 * Constructor
@@ -99,38 +124,10 @@ void NyquistModulator::Modulate(double *ifftOutput)
 * @param symbolStart Start of the actual first sample of the symbol in the Rx signal buffer. 
 *
 */   
-void NyquistModulator::Demodulate(double *rxBuffer, fftw_complex *pFFTInput, const size_t symbolStart)
+void NyquistModulator::Demodulate(double *pRxBuffer, fftw_complex *pFFTInput, const size_t symbolStart)
 {
-    
-    double *pRxBuffer = nullptr;
     // Initialize double buffer counter
     size_t j = symbolStart;
-    // If symbol lies across the end edge of the buffer.
-    // Use temporary buffer to allign the symbol for demodulation
-    if( symbolStart >= (m_RingBufferBoundary - m_ofdmSettings.m_SymbolSize))
-    {
-        //std::cout << " Demodulator Edge Case!" << std::endl;
-        // Calculate the number elements of the symbol untill boundary of the ring buffer
-        size_t nToBoundary = m_RingBufferBoundary - symbolStart;
-        // Copy samples
-        memcpy( &m_TempBuffer[0], &rxBuffer[symbolStart], nToBoundary*sizeof(double));
-        // Calculate the number elements of the symbol over boundary of the ring buffer
-        size_t nOverBoundary = m_ofdmSettings.m_SymbolSize - nToBoundary;
-        // Copy samples
-        memcpy(&m_TempBuffer[nToBoundary], &rxBuffer[0], nOverBoundary*sizeof(double)); // This breaks
-        //std::cout << " Demodulator Addition = " << nOverBoundary + nToBoundary << std::endl;
-        // Assign Pointer
-        pRxBuffer = m_TempBuffer;
-        // Update counter;
-        j = 0;
-        
-    }
-    // Can demodulate straight from rxBuffer
-    else
-    {
-        pRxBuffer = rxBuffer;
-    }
-    
 
     // If the nPoints is even
     if(m_ofdmSettings.m_nFFTPoints % 2 == 0)
@@ -140,14 +137,18 @@ void NyquistModulator::Demodulate(double *rxBuffer, fftw_complex *pFFTInput, con
         {
             // Copy first sample's real and img respectivley
             pFFTInput[i][0] = pRxBuffer[j];
-            j++;
+            LimitIncrement(j, m_RingBufferBoundary);
+            //j++; 
             pFFTInput[i][1] = pRxBuffer[j];
-            j++;
+            LimitIncrement(j, m_RingBufferBoundary);
+            //j++;
             // Copy and the minus real and img respectivley of next the sample
             pFFTInput[i+1][0] = -pRxBuffer[j];
-            j++;
+            LimitIncrement(j, m_RingBufferBoundary);
+            //j++;
             pFFTInput[i+1][1] = -pRxBuffer[j];
-            j++;
+            LimitIncrement(j, m_RingBufferBoundary);
+            //j++;
         }
     }
     // nPoints must be odd
@@ -161,11 +162,13 @@ void NyquistModulator::Demodulate(double *rxBuffer, fftw_complex *pFFTInput, con
             // Copy the real part of the sample and multiply by s factor
             pFFTInput[i][0] = s * pRxBuffer[j];
             // Increment double buffer counter
-            j++;
+            LimitIncrement(j, m_RingBufferBoundary);
+            //j++;
             // Copy the imag part of the sample and multiply by s factor
             pFFTInput[i][1] = s * pRxBuffer[j];
             // Increment double buffer counter
-            j++;
+            LimitIncrement(j, m_RingBufferBoundary);
+            //j++;
             // Compute factor for next sample
             s *= -1;
         }

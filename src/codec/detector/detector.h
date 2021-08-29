@@ -17,9 +17,11 @@
 #include <fftw3.h>
 #include <cstring>
 
+#include "common.h"
 #include "fft.h"
 #include "nyquist-modulator.h"
-#include "common.h"
+#include "accumulator.h"
+
 
 #include <cstddef>
 
@@ -71,6 +73,7 @@ public:
 
 
 	double ExecuteCorrelator();
+	void ExecuteAccumulatorFullSet();
 	long int CoarseSearch();
 	
 	double ComputeSumOfImag(size_t offset);
@@ -87,6 +90,7 @@ private:
 	const OFDMSettings &m_ofdmSettings;
 	FFT &rFFT;
 	NyquistModulator &rNyquistModulator;
+	Accumulator m_correlationAccumulator;
 
 	// Detector Settings
 	double m_UpperThreshold; // TODO: Calibration function which listens to the noise and sets this value or Normalisation

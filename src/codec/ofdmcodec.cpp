@@ -146,7 +146,7 @@ size_t OFDMCodec::ProcessRxBuffer(const double *input, uint8_t *output , size_t 
         // Normalise FFT
         m_fft.Normalise();
         // Estmiate Channel
-        //m_Estimator.PhaseCompenstator(m_fft.out);
+        m_Estimator.FrequencyDomainInterpolation(m_fft.out);
         // Decode QAM encoded fft points and place in the destination buffer
         m_qam.Demodulate(m_fft.out, output);
         return nBytes;

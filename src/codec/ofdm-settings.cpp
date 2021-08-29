@@ -130,6 +130,7 @@ void OFDMSettings::Configure(OFDMSettingsStruct settingsStruct)
 
     // Calculate number of avaiable sub-carriers for data
     // This depends on the size of the fft and pilot tone distance
+    // TODO: Account for the DC point 
     m_nMaxDataSubCarriers = (m_nFFTPoints - (size_t)(m_nFFTPoints/m_PilotToneDistance));
     // Compute the equivelent of avaiable data bytes per symbol
     m_nMaxDataBytesPerSymbol = (size_t)((m_nMaxDataSubCarriers * BITS_PER_FREQ_POINT)  / BITS_IN_BYTE);
@@ -187,7 +188,7 @@ void OFDMSettings::ComputeLocationVectors()
     m_PilotToneLocations.clear();
     m_DataSubCarrierLocations.clear();
 
-    // Calculate number of pilot tones used in the p
+    // Calculate number of pilot tones used in the symbol
     m_nMaxPilots = (size_t) (((m_nDataBytesPerSymbol*BITS_IN_BYTE)/BITS_PER_FREQ_POINT)/m_PilotToneDistance);
     //std::cout << "Number of Max Pilot tones = " << m_nMaxPilots << std::endl;
 
@@ -212,16 +213,18 @@ void OFDMSettings::ComputeLocationVectors()
     // The more points, larger spectrum, more sub-carriers, the closer to the DC point the stating index is
     m_SubCarrierStartIndex = (size_t) ((m_nFFTPoints) - (m_nMaxPilots/ 2) - ((m_nDataBytesPerSymbol * 4) / 2));
     //std::cout << "Sub-Carrier Start Index = " << m_SubCarrierStartIndex << std::endl;
+    //size_t m_SubCarrierStartIndex = (((BITS_IN_BYTE*m_nDataBytesPerSymbol)/m_QAMSize) + m_nMaxPilots)/2;
 
     // Start insertion with negative frequencies
     size_t fftPointCounter = m_SubCarrierStartIndex;
     // Set Pilot counter 
-    size_t pilotCounter =  (size_t)(m_PilotToneDistance / 2);
+    size_t pilotCounter = (size_t)(m_PilotToneDistance / 2);
 
     // Counter for to make sure FREQ_POINTS_PER_BYTE sub-carriers
     // are used for the data before bits from subsequent bytes are used 
     size_t insertionCounter = 0;
     size_t byteCounter = 0;
+
     while(byteCounter < m_nDataBytesPerSymbol)
     {
         // Reset fft point insertion counter 

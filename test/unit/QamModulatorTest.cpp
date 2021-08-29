@@ -21,6 +21,26 @@
 #include "common.h"
 #include "fftw3.h"
 
+void PlotFFT(fftw_complex *fft, size_t nFFTPoints) 
+{
+    using namespace matplot;
+
+    // Cast & Compute abs
+    std::vector<double> fftBuffer(nFFTPoints);
+    for(size_t i = 0; i < nFFTPoints; i++) 
+    {
+        std::complex<double> x(fft[i][0],fft[i][1]);
+        fftBuffer.at(i) = std::abs(x);
+    }
+
+    std::vector<double> x = linspace(0, 1, nFFTPoints);
+    plot(x, fftBuffer)->color({0.f, 0.7f, 0.9f});
+    title("OFDM Symbol - Frequency Spectrum(output of the 4-QAM modulator)");
+    xlabel("Frequency");
+    ylabel("|H|");
+
+    show();
+}
 
 /**
 * Test NYQUIST MODULATOR
@@ -47,7 +67,7 @@ BOOST_AUTO_TEST_CASE(QamModToDemod)
     encoderSettingsStruct.PilotToneAmplitude = 2.0; 
     encoderSettingsStruct.QAMSize = 2; 
     encoderSettingsStruct.PrefixSize = (size_t) ((encoderSettingsStruct.nFFTPoints*2)/4); // 1/4th of symbol
-    encoderSettingsStruct.nDataBytesPerSymbol = 100;
+    encoderSettingsStruct.nDataBytesPerSymbol = 240;
 
     OFDMSettings encoderSettings(encoderSettingsStruct);
 
@@ -92,7 +112,8 @@ BOOST_AUTO_TEST_CASE(QamModToDemod)
         BOOST_CHECK_MESSAGE( (TxCharArray[i] == RxCharArray[i] ), 
         "Elements differ! - Occured at index: " << i );
     }
-
+    // Plot symbol
+    PlotFFT(QamDemodulatorOutput, encoderSettings.m_nFFTPoints);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -41,8 +41,7 @@ public:
 	*/
 	~ChannelEstimator();
 
-    void PhaseCompenstator(fftw_complex *pFFTOutput);
-    //void FrequencyDomainInterpolation(double *pFFTOutput, size_t nBytes);
+    void FrequencyDomainInterpolation(fftw_complex *pFFTOutput);
 
 private:
 

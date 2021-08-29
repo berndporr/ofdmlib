@@ -9,11 +9,11 @@
 * @param nyquist reference to the nyquist modulator objecct
 *
 */
-Accumulator::Accumulator(const OFDMSettings &settings) :
-    m_ofdmSettings(settings)
+Accumulator::Accumulator(const size_t size) :
+    m_nSamples(size),
+    m_LastSampleIndex(0)
 {
-    pData = (double*) calloc((m_ofdmSettings.m_PrefixSize), sizeof(double));
-    m_lastIndex = 0;
+    pData = (double*) calloc(m_nSamples, sizeof(double));
 }
 
 /**
@@ -30,41 +30,73 @@ Accumulator::~Accumulator()
 * Process number of samples equal to the size of the buffer 
 *
 */
-double Accumulator::ComputeFull(double *prefix, double *signal)
+double Accumulator::ProcessFullSet(double *buffer, size_t prefix, size_t signal)
 {
-    for(size_t i = 0; i < m_ofdmSettings.m_PrefixSize; i++)
+    /*
+    // Buffer size
+    size_t p = prefix;
+    size_t s = prefix;
+    if( + )
     {
-        ProcessSample(prefix[i] * signal[i]);
+
     }
+
+    for(size_t i = 0; i < m_nSamples; i++)
+    {
+        ProcessSample(buffer[p] * buffer[s]);
+    }
+    */
     return m_Sum;
 }
 
 
 /**
-* Process new sample
+* Process new sample by subtracting the last sample 
 *
 *@param sample new sample to insert into the array in place of the last in the sequence
+*
 *
 */
 double Accumulator::ProcessSample(double sample)
 {
-    // Substract the last sample
-    m_Sum -= pData[m_lastIndex];
-    // Insert Element the new element in its place
-    pData[m_lastIndex] = sample;
-    // Add new sample
+    // Substract the last sample from the sum
+    m_Sum -= pData[m_LastSampleIndex];
+    // Insert new element in place of the last sample
+    pData[m_LastSampleIndex] = sample;
+    // Add new sample to the sum
     m_Sum += sample; 
-    // Increment last index tracker
+    // Increment last sample index tracker
     // If Increment is not going to exceed the boundary
-    if( (m_lastIndex+1) < m_ofdmSettings.m_PrefixSize)
+    if( (m_LastSampleIndex+1) <= m_nSamples)
     {
-        m_lastIndex++;
+        // Safe to increment
+        m_LastSampleIndex++;
     }
     // Wrap around
     else
     {
-        m_lastIndex = 0;
+        m_LastSampleIndex = 0;
     }
     // Return Sum
     return m_Sum;
+}
+
+
+/**
+* Clears the sum and samples of the accumulator
+*
+*
+*/
+void Accumulator::Reset()
+{   
+    // Set Sum to zero
+    m_Sum = 0;
+    // Each element 
+    for(size_t elementCounter = 0; elementCounter < m_nSamples; elementCounter++)
+    {   
+        // Set element to zero
+        pData[elementCounter] = 0;
+    }
+    // Reset Last sample index to default
+    m_LastSampleIndex = 0;
 }

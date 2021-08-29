@@ -55,7 +55,7 @@ public:
 
 
 	void Modulate(double *ifftOutput);
-	void Demodulate(double *rxBuffer, fftw_complex *pFFTInput, const size_t symbolStart);
+	void Demodulate(double *pRxBuffer, fftw_complex *pFFTInput, const size_t symbolStart);
 
 	
 public: 

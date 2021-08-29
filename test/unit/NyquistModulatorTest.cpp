@@ -18,7 +18,6 @@
 #include "nyquist-modulator.h"
 #include "fftw3.h"
 
-#define DIFFERENCE_THRESHOLD 0.0001
 
 
 /**
@@ -131,20 +130,12 @@ BOOST_AUTO_TEST_CASE(ModToDemod)
         for (size_t i = 0; i < encoderSettings.m_nFFTPoints; i++)
         {      
             //printf("Real Sample: %lu %+9.10f Input to Modulator vs. %+9.10f Output of Demodulator\n", i, ifftOutput[(i*2)], demodulatorOutput[i][0]);
-            
-            // Check if real and complex element match within defined precision.
-            //BOOST_CHECK_MESSAGE( (std::abs( ifftOutput[(i*2)] -  demodulatorOutput[i][0] ) <= DIFFERENCE_THRESHOLD ), 
-            //"Values vary more than threshold! - Occured at index: " << i );  
 
             // Check if real and complex element match within defined precision.
             BOOST_CHECK_MESSAGE( (ifftOutput[(i*2)] == demodulatorOutput[i][0] ), 
             "Values vary more than threshold! - Occured at index: " << i );  
             
-            //printf("Imag Sample: %lu %+9.10f Input to Modulator vs. %+9.10f Output of Demodulator\n", i, ifftOutput[(i*2)+1], demodulatorOutput[i][1]);
-
-            // Check if real and complex element match within defined precision.
-            //BOOST_CHECK_MESSAGE( (std::abs( ifftOutput[(i*2)+1] - demodulatorOutput[i][1] ) <= DIFFERENCE_THRESHOLD ), 
-            //"Values vary more than threshold! - Occured at index: " << i );  
+            //printf("Imag Sample: %lu %+9.10f Input to Modulator vs. %+9.10f Output of Demodulator\n", i, ifftOutput[(i*2)+1], demodulatorOutput[i][1]); 
 
             // Check if real and complex element match within defined precision.
             BOOST_CHECK_MESSAGE( (ifftOutput[(i*2)+1] == demodulatorOutput[i][1] ), 

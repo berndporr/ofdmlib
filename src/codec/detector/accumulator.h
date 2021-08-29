@@ -32,7 +32,7 @@ public:
 	* Constructor 
 	*
 	*/
-	Accumulator(const OFDMSettings &settingsStruct);
+	Accumulator(const size_t size);
 
     /**
 	* Destructor 
@@ -40,16 +40,15 @@ public:
 	*/
 	~Accumulator();
 
-    double ComputeFull(double *prefix, double *signal);
+    double ProcessFullSet(double *buffer, size_t prefix, size_t signal);
     double ProcessSample(double sample);
+	void Reset();
 
 private:
-	const OFDMSettings m_ofdmSettings;
     double *pData;
-    double m_Output;
 	double m_Sum;
-	double m_lastElementValue;
-	size_t m_lastIndex;
+	size_t m_nSamples;
+	size_t m_LastSampleIndex;
 
 
 };

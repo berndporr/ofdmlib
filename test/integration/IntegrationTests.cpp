@@ -32,7 +32,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-/*
+
 void PlotFFT(double *symbol, size_t nFFTPoints) 
 {
     using namespace matplot;
@@ -60,11 +60,11 @@ void PlotFFT(double *symbol, size_t nFFTPoints)
     }
 
 
-    std::vector<double> x = linspace(0, nFFTPoints, 1);
+    std::vector<double> x = linspace(0, 1, nFFTPoints);
     plot(x, fftBuffer)->color({0.f, 0.7f, 0.9f});
-    title("2-D Line Plot");
-    xlabel("x");
-    ylabel("FFT Spectrum");
+    title("Modulated OFDM SYMBOL SPECTRUM");
+    xlabel("Normalised Frequency");
+    ylabel("Amplitude");
 
     show();
 
@@ -106,7 +106,7 @@ void PlotRealFFT(double *data, size_t nFFTPoints)
         fftBuffer.at(i) = std::abs(x);
     }
 
-    std::vector<double> x = linspace(0, nFFTPoints, 1);
+    std::vector<double> x = linspace(0, 1, nFFTPoints);
     plot(x, fftBuffer)->color({0.f, 0.7f, 0.9f});
     title("2-D Line Plot");
     xlabel("Normalised Freq");
@@ -117,9 +117,9 @@ void PlotRealFFT(double *data, size_t nFFTPoints)
     fftw_destroy_plan(fftplan);
     fftw_free(in); fftw_free(out);
 }
-*/
+
 /*
-void Plotbuffer(double *data, size_t nFFTPoints)
+void Plotbuffer(double *data, size_t nFFTPoints, title)
 {
     using namespace matplot;
 
@@ -130,7 +130,7 @@ void Plotbuffer(double *data, size_t nFFTPoints)
         vecBuffer.at(i) = data[i];
     }
 
-    std::vector<double> x = linspace(0, nFFTPoints, nFFTPoints);
+    std::vector<double> x = linspace(0, nFFTPoints, nFFTPoints); // TODO: make this from 0 to 1;
     plot(x, vecBuffer)->color({0.f, 0.7f, 0.9f});
     title("2-D Line Plot");
     xlabel("Normalised Freq");
@@ -219,7 +219,7 @@ double ComputeBitErrorRatio(uint8_t *input, uint8_t *output, size_t nBytes)
         errorCount += bitSet.count();      
     }
     // Compute Ratio
-    double ratio = errorCount/nBits;
+    double ratio = (double) errorCount / (double)nBits;
     // Return
     return ratio;
 }
@@ -339,6 +339,7 @@ BOOST_AUTO_TEST_CASE(TheorethicalSelfReceiving)
     encoderSettings.PilotToneAmplitude = 2.0; 
     encoderSettings.QAMSize = 2; 
     encoderSettings.PrefixSize = (size_t) ((encoderSettings.nFFTPoints*2)/4); // 1/4th of symbol
+    encoderSettings.nDataBytesPerSymbol = 240;
 
     OFDMSettingsStruct decoderSettings = encoderSettings;
     decoderSettings.type = FFTW_FORWARD;
@@ -387,7 +388,7 @@ BOOST_AUTO_TEST_CASE(TheorethicalSelfReceiving)
         // Encode Symbols & Place them in buffer
         for (size_t i = 0; i < nSymbolsToTx; i++)
         {
-            trx.m_TxCallbackData.pCodec->Encode(&txIn[i*nBytes], &encodedplayback[i*prefixedSymbolSize], nBytes);
+            trx.m_TxCallbackData.pCodec->Encode(&txIn[i*nBytes], &encodedplayback[i*prefixedSymbolSize]);
         }
 
         // Copy encoded symbols to random position in the buffer
@@ -443,7 +444,7 @@ BOOST_AUTO_TEST_CASE(TheorethicalSelfReceiving)
 }
 */
 
-/*
+
 BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
 {
     std::cout << "\nRecorded Self-Receiveing Test\n" << std::endl;
@@ -453,7 +454,7 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
     encoderSettingsStruct.EnergyDispersalSeed = 10;
     encoderSettingsStruct.nFFTPoints = 1024; 
     encoderSettingsStruct.PilotToneDistance = 16; 
-    encoderSettingsStruct.PilotToneAmplitude = 2.0; 
+    encoderSettingsStruct.PilotToneAmplitude = 1.0; 
     encoderSettingsStruct.QAMSize = 2; 
     encoderSettingsStruct.PrefixSize = (size_t) ((encoderSettingsStruct.nFFTPoints*2)/4); // 1/4th of symbol
     encoderSettingsStruct.nDataBytesPerSymbol = 100;
@@ -531,8 +532,9 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
     // Execute transform for last symbol to put data in out buffer
     //trx.m_encoder.m_fft.ComputeTransform();
     // Compute & Plot FFTs for ofdm symbol and tx symbol spectrum
-    //PlotFFT((double *)trx.m_encoder.m_fft.out, encoderSettings.nFFTPoints);   // This plots the last symbol in the sequence
-    //PlotRealFFT(encodedplayback, prefixedSymbolSize);            // This plots the first prefixed symbol in the sequence
+    //trx.m_encoder.m_fft.ComputeTransform();
+    //PlotFFT((double *)trx.m_encoder.m_fft.out, encoderSettingsStruct.nFFTPoints );   // This plots the last symbol in the sequence
+    //PlotRealFFT(&encodedplayback[encoderSettingsStruct.PrefixSize], encoderSettingsStruct.nFFTPoints*2 );            // This plots the first prefixed symbol in the sequence
 
     size_t bufferCounter = 0; 
     size_t symbolCounter = 0;
@@ -604,7 +606,7 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
         }
         totalErrorByteCnt += byteErrorCount;
         symbolErrorCounter.push_back(byteErrorCount);
-        std::cout <<  j  << " Symbol Error Count = " << byteErrorCount << std::endl;
+        std::cout << byteErrorCount << std::endl;
     }
 
     // Plot recorded & transmitted waveforms
@@ -617,10 +619,10 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
     std::cout << "BER =  " << BER << std::endl;
 
 }
-*/
 
 
 
+/*
 BOOST_AUTO_TEST_CASE(RealTimeSelfReceiveing)
 {
     using namespace matplot;
@@ -712,16 +714,16 @@ BOOST_AUTO_TEST_CASE(RealTimeSelfReceiveing)
         }
         symbolErrorCounter.push_back(byteErrorCount);
         totalErrorByteCnt += byteErrorCount;
-        std::cout <<  j  << " Symbol Error Count = " << byteErrorCount << std::endl;
+        std::cout << byteErrorCount << std::endl;
     }
     size_t nTotalBytes = (nBytes*nSymbolsToTx);
     double percentByteErrorRate =  100.0 * (   ((double) totalErrorByteCnt / (double)nTotalBytes));
-    std::cout << "Total byte error rate is " << totalErrorByteCnt << "/"<< nBytes*nSymbolsToTx << " - " << percentByteErrorRate << " %" << std::endl;
+    std::cout << "byte error ratio = " << totalErrorByteCnt << "/"<< nBytes*nSymbolsToTx << " - " << percentByteErrorRate << " %" << std::endl;
     double BER = ComputeBitErrorRatio(txImg, rxImg, nTotalBytes);
     std::cout << "BER =  " << BER << std::endl;
     stbi_write_jpg("rxImg.png", width, height, CHANNEL_NUM, rxImg, width * CHANNEL_NUM);
 
 }    
-
+*/
 
 BOOST_AUTO_TEST_SUITE_END()

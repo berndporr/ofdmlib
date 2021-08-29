@@ -22,10 +22,13 @@
 #include <stdio.h>
 #include <string.h>
 
+
 #define BITS_IN_BYTE            8
 #define BITS_PER_FREQ_POINT     2
 #define BYTE_MAX                255
 #define FREQ_POINTS_PER_BYTE    4
+
+
 
 /**
  * @brief 4-QAM modulator object,
@@ -51,11 +54,28 @@ public:
 	} 
     void Modulate(const uint8_t *input, fftw_complex *output);
     void Demodulate(const fftw_complex *input, uint8_t *output); 
+    void PlotQ(fftw_complex *FFT, size_t nPoints);
 
 private:
 
     const OFDMSettings &m_ofdmSettings;
 };
+
+
+inline void QamModulator::PlotQ(fftw_complex *FFT, size_t nPoints)
+{
+    using namespace matplot;
+    DoubleVec x;
+    DoubleVec y;
+    for(size_t i = 0; i < nPoints; i++ )
+    {
+        x.push_back( FFT[i][0] );
+        y.push_back( FFT[i][1] );
+    }
+
+    scatter(x, y);
+    show();
+}
 
 
 /**
@@ -117,6 +137,13 @@ inline void QamModulator::Modulate(const uint8_t *input, fftw_complex *output)
         // Phase(Imag)
         output[ m_ofdmSettings.m_PilotToneLocations[i] ][1] = 0;
     }
+    //PlotQ(output,m_ofdmSettings.m_nFFTPoints);
+    /*   
+    for(size_t i = 0 ; i < m_ofdmSettings.m_nFFTPoints ; i++ )
+    {
+        std::cout << " Real = " << output[i][0] << " Imag = " << output[i][1] << std::endl;
+    }
+    */
 
 }
 
@@ -154,7 +181,7 @@ inline void QamModulator::Demodulate(const fftw_complex *input, uint8_t *output)
         // For each sub-carrier(complex frequency point) that composes this byte
         for(size_t i = 0; i < FREQ_POINTS_PER_BYTE; i++)
         {
-            // TODO: Assert m_ofdmSettings.m_DataSubCarrierLocations[dataSubCarrierCounter] is within limits 
+           
             // Real component hard decision decoding
             // If Real value is greater than 0
             if( (input[ m_ofdmSettings.m_DataSubCarrierLocations[dataSubCarrierCounter] ][0] > 0 ) )

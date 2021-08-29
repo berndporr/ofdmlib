@@ -9,6 +9,7 @@
 #include "gnuplot-iostream.h"
 #include "detector.h"
 
+
 /**
 * Constructor
 * 
@@ -21,6 +22,7 @@ Detector::Detector(const OFDMSettings &settings, FFT &fft, NyquistModulator &nyq
     m_ofdmSettings(settings),
     rFFT(fft),
     rNyquistModulator(nyquist),
+    m_correlationAccumulator(m_ofdmSettings.m_PrefixSize),
     m_UpperThreshold(1), // Value for Tests 35000000000
     m_LowerThreshold(0.3), // Value for Tests  10000000000
     m_SearchRange(25),
@@ -144,6 +146,40 @@ double Detector::ExecuteCorrelator()
     return correlation;
 }
 
+/**
+* Computes correlation in time domain.
+* This is done by accumulating the product of the prefix
+* which should correspond to the expected symbol for the 
+* length of the prefix. 
+* 
+* @param prefixOffset An index of the start of the prefix
+* 
+* @return correlation result
+*
+*/
+void Detector::ExecuteAccumulatorFullSet()
+{
+    // Set the signal index to the symbol's end start, 
+    // which in theory coresponds to the prefix 
+    // For each sample length of the prefix size
+    size_t p = m_PrefixIndex;
+    size_t s = m_SignalIndex;
+    // Initialize element counter
+    size_t i = 0;
+    // Compute the sum of a product untill the whole length of the prefix
+    while(i != m_ofdmSettings.m_PrefixSize)
+    {
+        // Multiply the samples of the signal which correspond to the prefix and symbol
+        // And put them into accumulator
+        m_correlationAccumulator.ProcessSample(m_BlockRingBuffer[p] * m_BlockRingBuffer[s]);
+        // Increment indicies
+        Increment(p);
+        Increment(s);
+        // Increment element counter
+        i++;
+    }
+}
+
 
 /**
 * Computes the first symbol start in the provided input buffer
@@ -265,7 +301,6 @@ size_t Detector::FineSearch(size_t coarseStart)
     std::cout << "Start Index = " << startIndex << std::endl;
     std::cout << "Search Range = " << m_SearchRange << std::endl;
     */
-
     // Initialize Index variable
     size_t index = startIndex;
     // For each offset from start to stop index 
@@ -301,7 +336,7 @@ size_t Detector::FineSearch(size_t coarseStart)
 * deals with the wrap around 
 *
 */
-void  Detector::IncrementCorrelatorIndicies(size_t n)
+void Detector::IncrementCorrelatorIndicies(size_t n)
 {
     size_t newIndex = 0;
     // Check if m_PrefixIndex  is going to exceed the boundary of ring buffer
@@ -340,6 +375,9 @@ void  Detector::IncrementCorrelatorIndicies(size_t n)
 * @return Index of the start of the prefix
 * else -1 if the search was not successful
 *
+* TODO: Fix the edge cases -  
+    first acumulator fullset processing on the very first buffer is missing and after the reset of the accumulator 
+    
 */
 long int Detector::CoarseSearch()
 {
@@ -349,19 +387,22 @@ long int Detector::CoarseSearch()
 
     // Calculate the interations required to reach the end of the block 
     // By adding the size of the new block 
-    m_OffsetCounter += (m_ofdmSettings.m_PrefixedSymbolSize); // m_PrefixedSymbolSize-1?; TODO: This keeps on iterating so bound this within the max to the ring buffer data position 
+    // TODO: This keeps on iterating so bound this within the max to the ring buffer data position 
+    m_OffsetCounter += (m_ofdmSettings.m_PrefixedSymbolSize); 
+
+    // If previous search was successful  
+    // Speed up the peak search
+    // Skip closer the possible peak
     
-    // If previous search was successful the  
-    // Speed up the peak search 
-    // Skip to the possible peak once
-    /*
     if((m_LastPeakCounter > 0) )
     {
         // Check if the symbol peak can occur before the end of the block
-        if( (m_OffsetCounter - m_LastPeakCounter) <= 0) 
+        if( (m_OffsetCounter - m_LastPeakCounter-1) <= 0) 
         {
-            // Update indicies
-            IncrementCorrelatorIndicies(m_OffsetCounter);
+            // Update Signal & prefix indicies 
+            // But Leave 1 sample early so the accummulator 
+            // can be filled
+            IncrementCorrelatorIndicies(m_OffsetCounter-1);
             // Update last peak counter
             m_LastPeakCounter -= m_OffsetCounter;
             m_OffsetCounter = 0;
@@ -369,14 +410,23 @@ long int Detector::CoarseSearch()
         // Set the indicies to where m_LastPeakCounter = 0 i.e indicates correlation can be calculated
         else
         {
-            // update Couter
-            IncrementCorrelatorIndicies(m_LastPeakCounter); 
-            m_OffsetCounter -= m_LastPeakCounter; //TODO THIS EXCEEDS the limits
+            // Update Signal & prefix indicies 
+            // But Leave 1 sample early so the accummulator 
+            // can be filled
+            IncrementCorrelatorIndicies(m_LastPeakCounter-1); 
+            m_OffsetCounter -= m_LastPeakCounter;
             // Reset last peak counter
             m_LastPeakCounter = 0;
         }
+        m_correlationAccumulator.Reset();
+        // Process full set for Accumulator 
+        ExecuteAccumulatorFullSet();
+        // Increment the variable
+        IncrementCorrelatorIndicies(1);
     }
-   */
+
+    // Reset correlation count since the peak occured
+    m_nFromPeak = 0;
    
     // If the loop breaks before the offset counter counts down 
     // It will keep its value and m_PrefixedSymbolSize is added above 
@@ -386,7 +436,8 @@ long int Detector::CoarseSearch()
     while(m_OffsetCounter > 0) 
     {
         // Calculate correlation for a given offset
-        correlation = ExecuteCorrelator();
+        //correlation = ExecuteCorrelator();
+        correlation = m_correlationAccumulator.ProcessSample(m_BlockRingBuffer[m_SignalIndex] * m_BlockRingBuffer[m_PrefixIndex]);
         // Square correlation to make the result +ve and further spearate peaks and noise
         correlation *= correlation;
         // DEBUG ONLY: Append correlation to plot buffer
@@ -404,9 +455,9 @@ long int Detector::CoarseSearch()
                 m_CorrelatorMaxValue = correlation;
                 // Update index at which this occured
                 m_CorrelatorMaxValueIndex = m_PrefixIndex;
-                //m_nFromPeak = 0;
+                m_nFromPeak = 0;
             }
-        
+            
         }
 
         // TODO: Jitter -> nSamplesLow 
@@ -428,7 +479,7 @@ long int Detector::CoarseSearch()
             break; 
         }
 
-        //m_nFromPeak++;
+        m_nFromPeak++;
         // Decrement points left before end of the block 
         m_OffsetCounter--;
         // Increment prefix & signal indicies 
@@ -451,7 +502,7 @@ long int Detector::CoarseSearch()
     // Debug only
     /*
     plotCounter++;
-    if(plotCounter == 6)
+    if(plotCounter == 7)
     {
         // Plot Corellator output
         Gnuplot gp;
@@ -463,10 +514,10 @@ long int Detector::CoarseSearch()
     // If prefix start has been found
     if(returnValue >= 0 )
     {
+        returnValue -= m_ofdmSettings.m_PrefixSize;
         // Set Last Peak counter
         // use symbol size but subtract the number since the actual peak has occured
-        m_LastPeakCounter = m_ofdmSettings.m_SymbolSize; //- m_nFromPeak;
-        //m_nFromPeak = 0;
+        m_LastPeakCounter = m_ofdmSettings.m_SymbolSize - m_nFromPeak - m_ofdmSettings.m_PrefixSize;
     }
 
     return returnValue;

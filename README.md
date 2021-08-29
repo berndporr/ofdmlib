@@ -53,11 +53,70 @@ ofdmlib is a flexible orthogonal-frequency division multiplexing(OFDM) C++ libra
 
 ### Software
 
-Currently ofdmlib is in development stages, you can view the [Roadmap](https://github.com/krogk/ofdmlib#roadmap) for planned features. 
+Currently ofdmlib is in early development stages, you can view the [Roadmap](https://github.com/krogk/ofdmlib#roadmap) for formally planned features. 
 
 [See Doxygen Documentation (Place holder for now)](https://krogk.github.io/ofdmlib/software/docs/Doxygen/html/index.html)
 <br />
 <br />
+
+
+Below are a handfull of the features which are currently implemented as a part of the OFDM system and some which are planned for future release (If you have any suggestions just send me a message).
+
+Quadrature Modulators:
+  [x] Nyquist Modulator
+
+
+Sub-Carrier Modulations:
+  [x]  4-QAM
+  []  16-QAM
+  []  64-QAM
+  []  256-QAM
+
+
+Synchronization:
+  [x] Fine Search using real valued pilot tones
+  [] Schmidl & Cox [Method](https://core.ac.uk/download/pdf/193988246.pdf)
+
+
+Detector:
+ Correlator:
+  [x] Time-Domain Correlator (Accumulator used to reduce execution time)
+  []  Frequency-Domain Correlator (Cyclic Convolution)
+
+
+Correlation Peak Search:
+  [x] Robust Schmitt trigger like Thresholding 
+  [] Statistical Methods - TBD (for example z-score is interesting)
+
+
+Pilot Tone Cofnigurations:
+  [] Block Type
+  [x] Comb-Type
+  [] Scattered
+  [] Circular
+
+
+Channel Estimation Methods:
+  [] Adaptive filter (utilizing FIR Structure)
+  [x] Linear Interpolation
+  [] High-order Interpolations
+
+
+FFT Algorithms Support
+  [x] FFTW3
+  [] kfr 
+
+
+FEC:
+  [] RS
+  [] LDPC
+  [] Convolution
+
+Multiple Access Methods:
+  []
+
+
+[] Multi-threading Adaptation
 
 
 ### Roadmap
@@ -92,9 +151,9 @@ make
 <!-- Usage -->
 ### Usage
 
-1. Placeholder
+1. See [Example]()
 ```sh
-#include <ofdmlib>
+#include <ofdmcodec.h>
 ```
 
 <!-- Contributing -->
@@ -105,7 +164,8 @@ See `CONTRIBUTING` for more information.
 <!-- Acknowledgements -->
 ## Acknowledgements
 
-Huge thank you to my supervisor [Dr Bernd Porr](https://github.com/berndporr) for the guidance through the project.
+Huge thank you to my supervisor [Dr Bernd Porr](https://github.com/berndporr) for the opportunity to work on this and the guidance through the project.
+Dr Porr has published vast amount of educational material in form of [videos](https://www.youtube.com/watch?v=VhgkCoVYhBI&list=PLvUvEbh7a8u_Wqtn7VpVhh_eZALqmLCQh) on the subject of the OFDM which are highly reccomended.
 
 <!-- License -->
 ## License
