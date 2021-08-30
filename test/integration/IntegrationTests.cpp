@@ -444,7 +444,7 @@ BOOST_AUTO_TEST_CASE(TheorethicalSelfReceiving)
 }
 */
 
-
+/*
 BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
 {
     std::cout << "\nRecorded Self-Receiveing Test\n" << std::endl;
@@ -454,7 +454,7 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
     encoderSettingsStruct.EnergyDispersalSeed = 10;
     encoderSettingsStruct.nFFTPoints = 1024; 
     encoderSettingsStruct.PilotToneDistance = 16; 
-    encoderSettingsStruct.PilotToneAmplitude = 1.0; 
+    encoderSettingsStruct.PilotToneAmplitude = 2.0; 
     encoderSettingsStruct.QAMSize = 2; 
     encoderSettingsStruct.PrefixSize = (size_t) ((encoderSettingsStruct.nFFTPoints*2)/4); // 1/4th of symbol
     encoderSettingsStruct.nDataBytesPerSymbol = 100;
@@ -619,10 +619,10 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
     std::cout << "BER =  " << BER << std::endl;
 
 }
+*/
 
 
 
-/*
 BOOST_AUTO_TEST_CASE(RealTimeSelfReceiveing)
 {
     using namespace matplot;
@@ -642,7 +642,7 @@ BOOST_AUTO_TEST_CASE(RealTimeSelfReceiveing)
     encoderSettings.EnergyDispersalSeed = 10;
     encoderSettings.nFFTPoints = 1024; 
     encoderSettings.PilotToneDistance = 16; 
-    encoderSettings.PilotToneAmplitude = 2.0; 
+    encoderSettings.PilotToneAmplitude = 1.0; 
     encoderSettings.QAMSize = 2; 
     encoderSettings.PrefixSize = (size_t) ((encoderSettings.nFFTPoints*2) /4); // 1/4th of symbol
     encoderSettings.nDataBytesPerSymbol = 100;
@@ -724,6 +724,6 @@ BOOST_AUTO_TEST_CASE(RealTimeSelfReceiveing)
     stbi_write_jpg("rxImg.png", width, height, CHANNEL_NUM, rxImg, width * CHANNEL_NUM);
 
 }    
-*/
+
 
 BOOST_AUTO_TEST_SUITE_END()

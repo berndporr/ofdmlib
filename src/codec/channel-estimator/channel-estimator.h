@@ -42,11 +42,14 @@ public:
 	~ChannelEstimator();
 
     void FrequencyDomainInterpolation(fftw_complex *pFFTOutput);
+	double LinearInterpolation(double a, double b, double t);
+	void PlotQAM(fftw_complex *FFT, fftw_complex *Corrected);
 
 private:
-
+	
+	fftw_complex *m_Temp; // Temporary plot buffer, saves the rx QAM
     const OFDMSettings m_Settings;
-	DoubleVec InterpolationFactors;
+	DoubleVec m_InterpolationFactors;;
 
 };
 

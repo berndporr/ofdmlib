@@ -441,7 +441,7 @@ long int Detector::CoarseSearch()
         // Square correlation to make the result +ve and further spearate peaks and noise
         correlation *= correlation;
         // DEBUG ONLY: Append correlation to plot buffer
-        //corOutput.push_back(correlation); 
+        corOutput.push_back(correlation); 
 
         // If the correlation exceeds the threshold
         if(correlation >= m_UpperThreshold)
