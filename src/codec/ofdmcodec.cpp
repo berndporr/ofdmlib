@@ -76,11 +76,14 @@ void OFDMCodec::Encode(const uint8_t *input, double *output)
 */
 void OFDMCodec::ProcessTxBuffer(const uint8_t *input, double *txBuffer)
 {
-    // QAM Encode data block
+    // Based on the input QAM encode the data
+    // Store
     m_qam.Modulate(input, m_fft.in);
-    // Transform data and put into the 
+    // Transform data and put into the tx buffer
     m_fft.ComputeTransform( (fftw_complex *) &txBuffer[GetSettings().m_PrefixSize]);
-    // Run nyquist modulator
+    // Run nyquist modulator to convert signal
+    // from complex base-band to real valued 
+    // band-pass
     m_NyquistModulator.Modulate(&txBuffer[GetSettings().m_PrefixSize]);
     // Add cyclic prefix
     AddCyclicPrefix(txBuffer, GetSettings().m_SymbolSize, GetSettings().m_PrefixSize);
@@ -104,11 +107,11 @@ void OFDMCodec::Decode(const double *input, uint8_t *output)
 {
     // Time sync to first symbol start
     size_t symbolStart = -1;
+    symbolStart = m_detector.FindSymbolStart(input);
     if( symbolStart >= 0)
     {
-        symbolStart = m_detector.FindSymbolStart(input);
         // Run Data thrgough nyquist demodulator
-        //m_NyquistModulator.Demodulate(input, m_fft.in, symbolStart);
+        m_NyquistModulator.Demodulate(input, m_fft.in, symbolStart);
         // Compute FFT & Normalise
         m_fft.ComputeTransform();
         // Normalise FFT
@@ -146,7 +149,7 @@ size_t OFDMCodec::ProcessRxBuffer(const double *input, uint8_t *output , size_t 
         // Normalise FFT
         m_fft.Normalise();
         // Estmiate Channel
-        //m_Estimator.FrequencyDomainInterpolation(m_fft.out);
+        m_Estimator.FrequencyDomainInterpolation(m_fft.out);
         // Decode QAM encoded fft points and place in the destination buffer
         m_qam.Demodulate(m_fft.out, output);
         return nBytes;

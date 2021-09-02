@@ -40,7 +40,6 @@ public:
 	*/
 	~Accumulator();
 
-    double ProcessFullSet(double *buffer, size_t prefix, size_t signal);
     double ProcessSample(double sample);
 	void Reset();
 

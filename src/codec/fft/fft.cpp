@@ -28,7 +28,7 @@ FFT::FFT(const OFDMSettings &settings) :
 */
 FFT::~FFT()
 {
-    Close();
+    CleanUp();
 }
 
 /**
@@ -47,7 +47,7 @@ void FFT::Configure()
     if(m_configured)
     { 
         // Destroy fft plan and free allocated memory to buffers
-        Close();
+        CleanUp();
     }
     // Allocate memory for the input & output buffers
     in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * m_ofdmSettings.m_nFFTPoints);
@@ -65,7 +65,7 @@ void FFT::Configure()
 * Destroys fftw plan and frees up allocated memory for input and output buffers
 *
 */    
-void FFT::Close()
+void FFT::CleanUp()
 {
     fftw_destroy_plan(m_fftplan);
     fftw_free(in); fftw_free(out);

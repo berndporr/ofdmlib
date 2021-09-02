@@ -34,7 +34,7 @@ void PlotFFT(fftw_complex *fft, size_t nFFTPoints)
     }
 
     std::vector<double> x = linspace(0, 1, nFFTPoints);
-    plot(x, fftBuffer)->color({0.f, 0.7f, 0.9f});
+    plot(x, fftBuffer)->color({0.0f, 0.0f, 0.0f});
     title("OFDM Symbol - Frequency Spectrum(output of the 4-QAM modulator)");
     xlabel("Frequency");
     ylabel("|H|");
@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE(QamModToDemod)
     OFDMSettingsStruct encoderSettingsStruct;
     encoderSettingsStruct.type = FFTW_BACKWARD;
     encoderSettingsStruct.EnergyDispersalSeed = 10;
-    encoderSettingsStruct.nFFTPoints = 1024; 
+    encoderSettingsStruct.nFFTPoints = 4096; 
     encoderSettingsStruct.PilotToneDistance = 16; 
     encoderSettingsStruct.PilotToneAmplitude = 2.0; 
     encoderSettingsStruct.QAMSize = 2; 
@@ -78,40 +78,46 @@ BOOST_AUTO_TEST_CASE(QamModToDemod)
     uint8_t * TxCharArray = (uint8_t*) calloc( encoderSettings.m_nDataBytesPerSymbol, sizeof(uint8_t));
     uint8_t * RxCharArray = (uint8_t*) calloc( encoderSettings.m_nDataBytesPerSymbol, sizeof(uint8_t));
 
+    fftw_complex *QamDemodulatorOutput = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * encoderSettings.m_nFFTPoints);
+    QamModulator qam(encoderSettings);
+
     for(size_t i = 0; i <  encoderSettings.m_nDataBytesPerSymbol; i++ )
     {
         TxCharArray[i] = (unsigned char) rand() % 255;
     }
 
-    fftw_complex *QamDemodulatorOutput = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * encoderSettings.m_nFFTPoints);
-    QamModulator qam(encoderSettings);
-
-    auto start = std::chrono::steady_clock::now();
-    qam.Modulate(TxCharArray, QamDemodulatorOutput);
-    auto end = std::chrono::steady_clock::now();
-
-    std::cout << "QAM Modulator elapsed time: "
-    << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-    << " ns" << std::endl;
-
-    printf("\nDemodulator:\n");
-
-    start = std::chrono::steady_clock::now();
-    qam.Demodulate(QamDemodulatorOutput, RxCharArray);
-    end = std::chrono::steady_clock::now();
-
-    std::cout << "QAM Demodulator elapsed time: "
-    << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
-    << " ns" << std::endl;
-    
-    for(size_t i = 0; i < encoderSettings.m_nDataBytesPerSymbol; i++)
+    size_t TestCount = 1000;
+    for(size_t testCnt = 0; testCnt < TestCount; testCnt++)
     {
-        //printf("TxCharArray[%lu] = %d ,RxCharArray[%lu] = %d\n"
-        //,i,(int)TxCharArray[i] ,i, (int)RxCharArray[i] );
+        auto start = std::chrono::steady_clock::now();
+        qam.Modulate(TxCharArray, QamDemodulatorOutput);
+        auto end = std::chrono::steady_clock::now();
 
-        BOOST_CHECK_MESSAGE( (TxCharArray[i] == RxCharArray[i] ), 
-        "Elements differ! - Occured at index: " << i );
+        std::cout << "QAM Modulator elapsed time: "
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+        << " ns" << std::endl;
+
+        printf("\nDemodulator:\n");
+
+        start = std::chrono::steady_clock::now();
+        qam.Demodulate(QamDemodulatorOutput, RxCharArray);
+        end = std::chrono::steady_clock::now();
+
+        std::cout << "QAM Demodulator elapsed time: "
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+        << " ns" << std::endl;
+        
+        for(size_t i = 0; i < encoderSettings.m_nDataBytesPerSymbol; i++)
+        {
+            //printf("TxCharArray[%lu] = %d ,RxCharArray[%lu] = %d\n"
+            //,i,(int)TxCharArray[i] ,i, (int)RxCharArray[i] );
+
+            BOOST_CHECK_MESSAGE( (TxCharArray[i] == RxCharArray[i] ), 
+            "Elements differ! - Occured at index: " << i );
+        }
+
     }
+
     // Plot symbol
     PlotFFT(QamDemodulatorOutput, encoderSettings.m_nFFTPoints);
 }

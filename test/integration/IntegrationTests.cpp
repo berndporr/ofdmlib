@@ -326,7 +326,7 @@ BOOST_AUTO_TEST_CASE(EncodeDecode)
 }
 */
 
-/*
+
 BOOST_AUTO_TEST_CASE(TheorethicalSelfReceiving)
 {
     std::cout << "\n Theorethical Self-Receiveing Test\n" << std::endl;
@@ -377,7 +377,7 @@ BOOST_AUTO_TEST_CASE(TheorethicalSelfReceiving)
     // Setup random seed
     srand( (unsigned)time( NULL ) );
 
-    for(size_t offsetIndex = 0; offsetIndex < 1; offsetIndex++) //prefixedSymbolSize
+    for(size_t offsetIndex = 512; offsetIndex < 513; offsetIndex++) //prefixedSymbolSize
     {
          // Generate array of random bytes
         for (size_t i = 0; i < nBytes*nSymbolsToTx; i++)
@@ -442,7 +442,7 @@ BOOST_AUTO_TEST_CASE(TheorethicalSelfReceiving)
     free(txIn);
     free(rxOut);
 }
-*/
+
 
 /*
 BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
@@ -621,8 +621,7 @@ BOOST_AUTO_TEST_CASE(RecordedSelfReceiveing)
 }
 */
 
-
-
+/*
 BOOST_AUTO_TEST_CASE(RealTimeSelfReceiveing)
 {
     using namespace matplot;
@@ -642,7 +641,7 @@ BOOST_AUTO_TEST_CASE(RealTimeSelfReceiveing)
     encoderSettings.EnergyDispersalSeed = 10;
     encoderSettings.nFFTPoints = 1024; 
     encoderSettings.PilotToneDistance = 16; 
-    encoderSettings.PilotToneAmplitude = 1.0; 
+    encoderSettings.PilotToneAmplitude = 2.0; 
     encoderSettings.QAMSize = 2; 
     encoderSettings.PrefixSize = (size_t) ((encoderSettings.nFFTPoints*2) /4); // 1/4th of symbol
     encoderSettings.nDataBytesPerSymbol = 100;
@@ -724,6 +723,6 @@ BOOST_AUTO_TEST_CASE(RealTimeSelfReceiveing)
     stbi_write_jpg("rxImg.png", width, height, CHANNEL_NUM, rxImg, width * CHANNEL_NUM);
 
 }    
-
+*/
 
 BOOST_AUTO_TEST_SUITE_END()

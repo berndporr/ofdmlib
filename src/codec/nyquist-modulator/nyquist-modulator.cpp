@@ -12,12 +12,12 @@
 // Ring Buffer Increments
 
 /**
-* Increments the specified variable by and wraps around
+* Increments the specified variable and wraps around
 * if neccessary.
 * 
 * @param variable reference to the variable being incremented
 *
-* @param Limit reference to the variable being incremented
+* @param Limit the boundary upon reach the variable is set to zero
 *
 */
 void LimitIncrement(size_t &variable, size_t Limit)
@@ -45,11 +45,6 @@ NyquistModulator::NyquistModulator(const OFDMSettings &settings) :
     m_ofdmSettings(settings)
 {
     m_RingBufferBoundary = m_ofdmSettings.m_PrefixedSymbolSize*3;
-    // Allocate memory for a temporary buffer
-    // For the edge case where the symbol spans across 
-    // end and start of the ring buffer
-    // TODO: Asses whether the if statements are faster
-    m_TempBuffer = (double*) calloc((m_ofdmSettings.m_SymbolSize), sizeof(double));
 }
 
 
@@ -67,10 +62,11 @@ NyquistModulator::~NyquistModulator()
 /**
 * Modulates the output of IFFT buffer by upsampling
 * at factor 2 and interleaving the I and Q signals.
-* This Function assumes the ifftOutput point to the first
-* element of the symbol.
+* This Function assumes the ifftOutput points to the first
+* element of the symbol (complex-time series).
 * 
-* @param ifftOutput pointer to the IFFT output buffer, this must point to the first element
+* @param ifftOutput pointer to the IFFT output buffer, 
+* this must point to the first element of the symbol
 *
 * @return 0 on success, else error number
 * 
@@ -119,12 +115,12 @@ void NyquistModulator::Modulate(double *ifftOutput)
 * This function combines the interleaved real and imaginary samples
 * into an input buffer of the fft transform.
 *
-* @param rxBuffer Raw Rx Samples
+* @param rxBuffer Band-pass rx samples
 * @param pFFTInput Pointer to the FFT input buffer
 * @param symbolStart Start of the actual first sample of the symbol in the Rx signal buffer. 
 *
 */   
-void NyquistModulator::Demodulate(double *pRxBuffer, fftw_complex *pFFTInput, const size_t symbolStart)
+void NyquistModulator::Demodulate(const double *pRxBuffer, fftw_complex *pFFTInput, const size_t symbolStart)
 {
     // Initialize double buffer counter
     size_t j = symbolStart;
@@ -138,17 +134,13 @@ void NyquistModulator::Demodulate(double *pRxBuffer, fftw_complex *pFFTInput, co
             // Copy first sample's real and img respectivley
             pFFTInput[i][0] = pRxBuffer[j];
             LimitIncrement(j, m_RingBufferBoundary);
-            //j++; 
             pFFTInput[i][1] = pRxBuffer[j];
             LimitIncrement(j, m_RingBufferBoundary);
-            //j++;
-            // Copy and the minus real and img respectivley of next the sample
+            // Copy and and make negative real and img respectivley of next the sample
             pFFTInput[i+1][0] = -pRxBuffer[j];
             LimitIncrement(j, m_RingBufferBoundary);
-            //j++;
             pFFTInput[i+1][1] = -pRxBuffer[j];
             LimitIncrement(j, m_RingBufferBoundary);
-            //j++;
         }
     }
     // nPoints must be odd

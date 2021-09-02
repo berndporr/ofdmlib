@@ -45,7 +45,7 @@ public:
 
 	void Configure();
 	void Normalise();
-	void Close();
+	void CleanUp();
 	void ComputeTransform();
 	void ComputeTransform(fftw_complex *dest);
 	double GetImagSum();

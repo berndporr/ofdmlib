@@ -22,8 +22,8 @@
 /**
  * @brief OFDM codec settings class
  * This object encapsulates all settings
- * related ofdm codec and objects. It is 
- * provides error checking which prevents
+ * related ofdm codec and objects. It
+ * provides basic error checking which prevents
  * use of invalid ofdm scheme.
  * 
  */
@@ -48,7 +48,7 @@ public:
 
 public:
 
-    int    m_type;
+    int    m_type;                         // Encoder() or Decoder()
     size_t m_EnergyDispersalSeed;
     size_t m_nFFTPoints;
     size_t m_SymbolSize;

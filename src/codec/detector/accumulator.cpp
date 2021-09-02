@@ -27,30 +27,6 @@ Accumulator::~Accumulator()
 
 
 /**
-* Process number of samples equal to the size of the buffer 
-*
-*/
-double Accumulator::ProcessFullSet(double *buffer, size_t prefix, size_t signal)
-{
-    /*
-    // Buffer size
-    size_t p = prefix;
-    size_t s = prefix;
-    if( + )
-    {
-
-    }
-
-    for(size_t i = 0; i < m_nSamples; i++)
-    {
-        ProcessSample(buffer[p] * buffer[s]);
-    }
-    */
-    return m_Sum;
-}
-
-
-/**
 * Process new sample by subtracting the last sample 
 *
 *@param sample new sample to insert into the array in place of the last in the sequence

@@ -231,7 +231,6 @@ AudioTrx::AudioTrx(rtAudioSettings audioSettings, OFDMSettingsStruct encoderSett
 
     // Open Tx & Rx streams
     OpenStreams(operationMode);
-
 }
 
 

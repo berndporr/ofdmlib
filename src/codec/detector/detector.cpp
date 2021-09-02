@@ -23,8 +23,8 @@ Detector::Detector(const OFDMSettings &settings, FFT &fft, NyquistModulator &nyq
     rFFT(fft),
     rNyquistModulator(nyquist),
     m_correlationAccumulator(m_ofdmSettings.m_PrefixSize),
-    m_UpperThreshold(1), // Value for Tests 35000000000
-    m_LowerThreshold(0.3), // Value for Tests  10000000000
+    m_UpperThreshold(1.5), // Value for Tests 35000000000
+    m_LowerThreshold(1.3), // Value for Tests  10000000000
     m_SearchRange(25),
     m_LastPeakCounter(0)
 {
@@ -147,21 +147,14 @@ double Detector::ExecuteCorrelator()
 }
 
 /**
-* Computes correlation in time domain.
-* This is done by accumulating the product of the prefix
-* which should correspond to the expected symbol for the 
-* length of the prefix. 
-* 
-* @param prefixOffset An index of the start of the prefix
-* 
-* @return correlation result
+* Updates the Accumulator circular buffer by
+* Feeding product it products for for cosnequtive 
+* time offsets.
 *
 */
 void Detector::ExecuteAccumulatorFullSet()
 {
-    // Set the signal index to the symbol's end start, 
-    // which in theory coresponds to the prefix 
-    // For each sample length of the prefix size
+    // Get the current prefix and the signal offset 
     size_t p = m_PrefixIndex;
     size_t s = m_SignalIndex;
     // Initialize element counter
@@ -170,7 +163,7 @@ void Detector::ExecuteAccumulatorFullSet()
     while(i != m_ofdmSettings.m_PrefixSize)
     {
         // Multiply the samples of the signal which correspond to the prefix and symbol
-        // And put them into accumulator
+        // Put them into accumulator
         m_correlationAccumulator.ProcessSample(m_BlockRingBuffer[p] * m_BlockRingBuffer[s]);
         // Increment indicies
         Increment(p);
@@ -193,7 +186,7 @@ void Detector::ExecuteAccumulatorFullSet()
 */
 long int Detector::FindSymbolStart(const double *input)
 {   
-    long int  coarseStart = 0;
+    long int coarseStart = -1;
     long int returnValue = -1;
 
     // Insert data block into block ring buffer
@@ -296,6 +289,7 @@ size_t Detector::FineSearch(size_t coarseStart)
     }
 
     /*
+    // For DEBUG ONLY
     std::cout << "" << std::endl;
     std::cout << "Coarse Symbol Start = " << coarseStart << std::endl;
     std::cout << "Start Index = " << startIndex << std::endl;
@@ -376,8 +370,8 @@ void Detector::IncrementCorrelatorIndicies(size_t n)
 * else -1 if the search was not successful
 *
 * TODO: Fix the edge cases -  
-    first acumulator fullset processing on the very first buffer is missing and after the reset of the accumulator 
-    
+*    first acumulator fullset processing on the very first buffer is missing and after the reset of the accumulator 
+* TODO: Jitter - Implement Upper nSamples guard
 */
 long int Detector::CoarseSearch()
 {
@@ -387,17 +381,15 @@ long int Detector::CoarseSearch()
 
     // Calculate the interations required to reach the end of the block 
     // By adding the size of the new block 
-    // TODO: This keeps on iterating so bound this within the max to the ring buffer data position 
     m_OffsetCounter += (m_ofdmSettings.m_PrefixedSymbolSize); 
 
     // If previous search was successful  
     // Speed up the peak search
     // Skip closer the possible peak
-    
     if((m_LastPeakCounter > 0) )
     {
         // Check if the symbol peak can occur before the end of the block
-        if( (m_OffsetCounter - m_LastPeakCounter-1) <= 0) 
+        if( (long int)(m_OffsetCounter - m_LastPeakCounter-1) <= 0) 
         {
             // Update Signal & prefix indicies 
             // But Leave 1 sample early so the accummulator 
@@ -426,13 +418,15 @@ long int Detector::CoarseSearch()
     }
 
     // Reset correlation count since the peak occured
+    size_t nSamplesLow = 0;
     m_nFromPeak = 0;
    
     // If the loop breaks before the offset counter counts down 
-    // It will keep its value and m_PrefixedSymbolSize is added above 
-    // to calculate the total itterations before the end of the block
-    // This means the correlator will continue where it left off when
-    // the symbol was found
+    // It will keep its value and m_PrefixedSymbolSize is on next
+    // execution of this function right a tt the start to calculate 
+    // the total itterations before the end of the block. This 
+    // means the correlator will continue where it left off when
+    // cyclic prefix was found
     while(m_OffsetCounter > 0) 
     {
         // Calculate correlation for a given offset
@@ -441,11 +435,12 @@ long int Detector::CoarseSearch()
         // Square correlation to make the result +ve and further spearate peaks and noise
         correlation *= correlation;
         // DEBUG ONLY: Append correlation to plot buffer
-        corOutput.push_back(correlation); 
+        //corOutput.push_back(correlation); 
 
         // If the correlation exceeds the threshold
         if(correlation >= m_UpperThreshold)
         {
+            nSamplesLow = 0;
             // Set the flag to true
             m_ThresholdFlag = true;
             // Check if the value is higher than current max
@@ -459,24 +454,29 @@ long int Detector::CoarseSearch()
             }
             
         }
-
-        // TODO: Jitter -> nSamplesLow 
     
         // If the sample value falls below lower threshold, and upper threshold was previosuly exceeded
         // Peak has been found
         if((correlation < m_LowerThreshold) && (m_ThresholdFlag == true) )
         {
-            // Reset flag
-            m_ThresholdFlag = false;
-            // Update Return Value
-            returnValue = m_CorrelatorMaxValueIndex;
+            if(nSamplesLow < 30) 
+            {
+                // Reset flag
+                m_ThresholdFlag = false;
+                // Update Return Value
+                returnValue = m_CorrelatorMaxValueIndex;
 
-            // Reset Correlator Max Value
-            m_CorrelatorMaxValue = 0;
-            // Reset Index 
-            m_CorrelatorMaxValueIndex = 0;
-            // break while loop
-            break; 
+                // Reset Correlator Max Value
+                m_CorrelatorMaxValue = 0;
+                // Reset Index 
+                m_CorrelatorMaxValueIndex = 0;
+                // break while loop
+                break; 
+            }
+            else
+            {
+                nSamplesLow++; 
+            }
         }
 
         m_nFromPeak++;
@@ -517,7 +517,14 @@ long int Detector::CoarseSearch()
         returnValue -= m_ofdmSettings.m_PrefixSize;
         // Set Last Peak counter
         // use symbol size but subtract the number since the actual peak has occured
-        m_LastPeakCounter = m_ofdmSettings.m_SymbolSize - m_nFromPeak - m_ofdmSettings.m_PrefixSize;
+        if( (long int)(m_ofdmSettings.m_SymbolSize - m_nFromPeak - m_ofdmSettings.m_PrefixSize - 100) < 0 )
+        {
+            m_LastPeakCounter = 0;
+        }
+        else
+        {
+            m_LastPeakCounter = m_ofdmSettings.m_SymbolSize - m_nFromPeak - m_ofdmSettings.m_PrefixSize;
+        }
     }
 
     return returnValue;
